@@ -97,3 +97,42 @@ Accede a la documentación interactiva de la API en:
 ## Licencia
 
 Este proyecto está bajo la licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más detalles.
+
+## Autenticación mediante Token JWT 
+Se instala la librería python-jose, que contiene el módulo jwt (Jason Web Token), y JWTError
+
+## Middleware de Validación de Token
+## Se ha implementado un middleware de autenticación JWT que protege rutas privadas verificando el token enviado por el cliente a través de cookies.
+
+## Funcionamiento
+## El middleware intercepta las solicitudes a rutas privadas.
+
+## Verifica la existencia de una cookie llamada userToken.
+
+## Decodifica el JWT usando la clave privada definida en las variables de entorno.
+
+## Si el token es válido, se permite el acceso; de lo contrario, se devuelve un error 401 Unauthorized.
+
+## Variables de entorno necesarias
+Asegúrate de definir lo siguiente en tu archivo .env:
+```
+PRIVATE_SECRET="tu_clave_privada_jwt"
+```
+
+## Endpoint: /account
+Este endpoint permite validar si el token proporcionado por el cliente sigue siendo válido.
+
+## Solicitud
+Método: GET
+
+URL: /account
+
+## Autenticación: Se requiere una cookie llamada userToken con un JWT válido.
+
+## Cookies requeridas
+Nombre	   Tipo	   Descripción
+userToken	JWT	   Token de autenticación del usuario
+
+## Respuesta
+200 OK: Token válido. Se retorna información básica del usuario decodificada del token.
+401 Unauthorized: Token inválido, expirado o ausente.

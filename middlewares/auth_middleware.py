@@ -15,6 +15,7 @@ async def verificar_token(request: Request, call_next):
         return await call_next(request)
     
     token = request.cookies.get('userToken')
+    print("Token recibido:", token)
     if not token:
         raise HTTPException(status_code=401, detail='Token no proporcionado')
     try:
@@ -22,5 +23,5 @@ async def verificar_token(request: Request, call_next):
         request.state.user = payload
     except JWTError:
         raise HTTPException(status_code=401, detail='Token no es válido o ya expiró')
-    response = await call_next(request) 
+    response = await call_next(request)
     return response

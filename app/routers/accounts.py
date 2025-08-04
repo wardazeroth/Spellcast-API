@@ -29,8 +29,7 @@ def get_db():
         yield db
     finally:
         db.close()
-        
-
+    
 
 @router.get('/')
 async def validar_token(request: Request, db: Session = Depends(get_db)): 

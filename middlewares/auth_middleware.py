@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 SECRET_KEY= os.getenv("PRIVATE_SECRET")
-ALGORITHM = "HS256"
+ALGORITHM = os.getenv('ALGORITHM')
 
 async def verificar_token(request: Request, call_next):
     

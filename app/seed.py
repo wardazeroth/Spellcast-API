@@ -1,7 +1,7 @@
 #Insertar datos ficticios en la base de datos
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
-from app.models.models import User, Library, Book
+# from app.models.models import User, Library, Book
 
 
 db: Session = SessionLocal()

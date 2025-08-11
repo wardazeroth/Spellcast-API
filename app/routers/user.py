@@ -42,7 +42,7 @@ async def create_credentianls(request: Request, db: Session = Depends(get_db)):
     if not usuario:
         raise HTTPException(status_code=404, detail="User not found")
     
-    body = await request.json()  # 👈 convierte bytes a dict
+    body = await request.json()
     azure_key = body.get('azure_key')
     region = body.get('region')
     voice = body.get('voice')

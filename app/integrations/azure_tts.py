@@ -15,7 +15,7 @@ speech_config.speech_synthesis_voice_name = "es-CL-CatalinaNeural"  # Ejemplo de
 speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config)
 
 # Texto a convertir
-text = "Wena chuchetumare"
+text = "Buena chuchetumare"
 
 # Realizar la conversión
 result = speech_synthesizer.speak_text_async(text).get()

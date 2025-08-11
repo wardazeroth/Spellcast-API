@@ -137,3 +137,4 @@ userToken	JWT	   Token de autenticación del usuario
 ## Respuesta
 200 OK: Token válido. Se retorna información básica del usuario decodificada del token.
 401 Unauthorized: Token inválido, expirado o ausente.
+

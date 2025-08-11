@@ -10,7 +10,7 @@ ALGORITHM = os.getenv('ALGORITHM')
 
 async def verificar_token(request: Request, call_next):
     
-    rutas_publicas = ["/", "/favicon.ico", '/docs',"/openapi.json"]
+    rutas_publicas = ["/", "/favicon.ico", '/docs',"/openapi.json", '/tts/']
     if request.url.path in rutas_publicas:
         return await call_next(request)
     

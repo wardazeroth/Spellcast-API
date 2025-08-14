@@ -1,35 +1,12 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.middleware import Middleware
-from sqlalchemy.orm import Session, registry
-from sqlalchemy import MetaData, Table, Column, Integer, String, select
-from sqlalchemy import create_engine
-from app.database import SessionLocal
-from app.database import DATABASE_URL
+from sqlalchemy.orm import Session
+from app.database import get_db
+from app.models.models import Users
 from dotenv import load_dotenv
 load_dotenv()
 
-metadata= MetaData()
-mapper_registry = registry()
-
-engine = create_engine(
-    DATABASE_URL
-)
-
-class Users:
-    pass
-
-tabla_usuarios= Table("users", metadata, autoload_with=engine)
-mapper_registry.map_imperatively(Users, tabla_usuarios)
-
 router = APIRouter(prefix="/accounts", tags=["Accounts"])
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-    
 
 @router.get('/')
 async def validar_token(request: Request, db: Session = Depends(get_db)): 

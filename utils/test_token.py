@@ -8,7 +8,7 @@ load_dotenv()
 SECRET_KEY = os.getenv('PRIVATE_SECRET')
 
 user_data = {
-    "id": "e0fb632c-c9f2-40f9-9644-5844d73f5a83"
+    "id": "3fb5115c-778c-4fe2-a479-57f9224229ad"
 }
 
 def crer_token(user: dict)-> str:

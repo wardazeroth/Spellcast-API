@@ -4,7 +4,7 @@ from middlewares.auth_middleware import verificar_token
 from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine
 from app.models import models
-from app.routers import accounts, user
+from app.routers import accounts, user, tts
 
 
 models.Base.metadata.create_all(bind=engine)
@@ -28,7 +28,10 @@ def root():
 
 
 # Incluir routers
+
+
 # app.include_router(library.router)
 # app.include_router(book.router)
 app.include_router(accounts.router)
 app.include_router(user.router)
+app.include_router(tts.router)

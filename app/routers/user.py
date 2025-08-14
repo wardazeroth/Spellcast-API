@@ -6,23 +6,14 @@ from sqlalchemy import create_engine
 from app.database import SessionLocal
 from app.database import DATABASE_URL
 from dotenv import load_dotenv
-from app.models.models import AzureCredentials
+from app.models.models import AzureCredentials, Users
 from utils.fernet_utils import encrypt_str, decrypt_str
 
 load_dotenv()
 
-metadata= MetaData()
-mapper_registry = registry()
-
 engine = create_engine(
     DATABASE_URL
 )
-
-class Users:
-    pass
-
-tabla_usuarios= Table("users", metadata, autoload_with=engine)
-mapper_registry.map_imperatively(Users, tabla_usuarios)
 
 router = APIRouter(prefix="/user", tags=["User"])
 

@@ -10,3 +10,6 @@ def encrypt_str(plain: str) -> str:
 
 def decrypt_str(token: str) -> str:
     return fernet.decrypt(token.encode("utf-8")).decode("utf-8")
+
+
+

@@ -10,13 +10,13 @@ ALGORITHM = os.getenv('ALGORITHM')
 
 async def verificar_token(request: Request, call_next):
     
-    rutas_publicas = ["/", "/favicon.ico", '/docs',"/openapi.json", '/tts/']
+    rutas_publicas = ["/", "/favicon.ico", '/docs',"/openapi.json"]
 
     if request.url.path in rutas_publicas:
         return await call_next(request)
     
-    token = request.cookies.get('userToken')
-    print("Token recibido:", token)
+    token = request.cookies.get('userToken') 
+    print("Token recibido:", token) 
     if not token:
         raise HTTPException(status_code=401, detail='Token no proporcionado')
     try:

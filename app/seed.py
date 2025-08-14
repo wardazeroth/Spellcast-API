@@ -2,6 +2,7 @@
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 # from app.models.models import User, Library, Book
+from app.models.models import Users, UserSubscription
 
 
 db: Session = SessionLocal()
@@ -20,5 +21,8 @@ db: Session = SessionLocal()
 # db.add(book)
 # db.commit()
 
+subscription = UserSubscription(user_id='e0fb632c-c9f2-40f9-9644-5844d73f5a83', plan="premium")
+db.add(subscription)
+db.commit()
 # db.close()
-# print("Datos ficticios insertados.")
+print("Datos ficticios insertados.")

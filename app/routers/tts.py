@@ -5,16 +5,13 @@ from sqlalchemy.orm import Session, registry
 from app.database import get_db
 from pydantic import BaseModel
 from app.models.models import Users, AzureCredentials
+from utils.fernet_utils import decrypt_str
 from dotenv import load_dotenv
 import io, os, httpx
 import tempfile
 load_dotenv()
 
-
-class TTSRequest(BaseModel):
-    text: str
-    voice: str | None= "es-ES-AlvaroNeural"
-
+default_voice = "es-ES-AlvaroNeural"
 
 router = APIRouter(prefix="/tts", tags=["tts"])
 
@@ -88,7 +85,7 @@ def remove_file(path):
 #     )
 
 @router.post('/')
-async def text_to_speech(request: Request, tts_req: TTSRequest, db: Session = Depends(get_db)): 
+async def text_to_speech(request: Request, db: Session = Depends(get_db)): 
     user_id = request.state.user.get('id')
     print('el id del user es: ', user_id)
     usuario= db.query(Users).filter(Users.id == user_id).first()
@@ -97,6 +94,11 @@ async def text_to_speech(request: Request, tts_req: TTSRequest, db: Session = De
     if not usuario:
         raise HTTPException(status_code=404, detail="User not found")
     
+    body = await request.json()
+    print('body: ', body)
+    text = body.get('text')
+    voice = body.get('voice')
+        
     if usuario.subscription.plan == 'suscriber':
         azure_api_key =os.getenv("AZURE_API_KEY")
         service_region = "brazilsouth"
@@ -105,8 +107,8 @@ async def text_to_speech(request: Request, tts_req: TTSRequest, db: Session = De
         credenciales = db.query(AzureCredentials).filter(AzureCredentials.user_id == user_id).first()
         azure_api_key = credenciales.azure_key
         service_region = credenciales.region
-        voice = credenciales.voice
-        
+        azure_api_key = decrypt_str(azure_api_key)   
+
     endpoint = f"https://{service_region}.tts.speech.microsoft.com/cognitiveservices/v1"
     
     headers = {
@@ -116,7 +118,7 @@ async def text_to_speech(request: Request, tts_req: TTSRequest, db: Session = De
         "User-Agent": "fastapi-tts"
     }
     
-    ssml = build_ssml(tts_req.text, tts_req.voice)
+    ssml = build_ssml(text, voice or default_voice)
     
     async with httpx.AsyncClient(timeout=None) as client:
         response = await client.post(endpoint, headers= headers, content=ssml)

@@ -11,7 +11,7 @@ import io, os, httpx
 import tempfile
 load_dotenv()
 
-default_voice = "es-ES-AlvaroNeural"
+default_voice = "es-CL-LorenzoNeural"
 
 router = APIRouter(prefix="/tts", tags=["tts"])
 

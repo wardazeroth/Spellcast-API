@@ -10,6 +10,7 @@ router = APIRouter(prefix="/accounts", tags=["Accounts"])
 
 @router.get('/')
 async def validar_token(request: Request, db: Session = Depends(get_db)): 
+    print('request state user es: ', request.state.user)
     user_id = request.state.user.get('id')
     print('el id del user es: ', user_id)
 
@@ -17,7 +18,7 @@ async def validar_token(request: Request, db: Session = Depends(get_db)):
     print(usuario)
 
     if not usuario:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail={'message': "Usuario no encontrado", 'logged': False})
     
     print('y esto?', usuario)  
     userData = { 
@@ -26,7 +27,9 @@ async def validar_token(request: Request, db: Session = Depends(get_db)):
         'email': usuario.email,
         'isVerified': usuario.isVerified,
         'role': usuario.role,
-        'profilePic': usuario.profilePic
-    } 
+        'profilePic': usuario.profilePic or usuario.googlePic
+    }
+    
+    print('userData: ', userData)
 
-    return ({'userData': userData})     
+    return ({ 'logged': True, 'userData': userData})     

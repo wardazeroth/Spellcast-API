@@ -5,11 +5,23 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine
 from app.models import models
 from app.routers import accounts, user, tts
+from fastapi.middleware.cors import CORSMiddleware
 
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://spellcast.nhexa.cl",  # tu frontend
+    ],
+    allow_credentials=True,           # importante si usas cookies de auth
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization"]
+)
+
 
 # Middleware
 app.middleware("http")(verificar_token)

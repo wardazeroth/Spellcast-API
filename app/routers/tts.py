@@ -99,7 +99,7 @@ async def text_to_speech(request: Request, db: Session = Depends(get_db)):
     text = body.get('text')
     voice = body.get('voice')
         
-    if usuario.subscription.plan == 'suscriber':
+    if usuario.subscription.plan == 'subscriber':
         azure_api_key =os.getenv("AZURE_API_KEY")
         service_region = "brazilsouth"
         

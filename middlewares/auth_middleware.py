@@ -21,8 +21,10 @@ async def verificar_token(request: Request, call_next):
         raise HTTPException(status_code=401, detail='Token no proporcionado')
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        request.state.user = payload
+        request.state.user = payload.get('data') 
+        
     except JWTError:
         raise HTTPException(status_code=401, detail='Token no es válido o ya expiró')
     response = await call_next(request)
     return response
+

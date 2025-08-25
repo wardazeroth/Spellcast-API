@@ -87,27 +87,33 @@ def remove_file(path):
 @router.post('/')
 async def text_to_speech(request: Request, db: Session = Depends(get_db)): 
     user_id = request.state.user.get('id')
-    print('el id del user es: ', user_id)
     usuario= db.query(Users).filter(Users.id == user_id).first()
-    print(usuario)
     
     if not usuario:
         raise HTTPException(status_code=404, detail="User not found")
     
     body = await request.json()
-    print('body: ', body)
     text = body.get('text')
     voice = body.get('voice')
+    own_credentials = body.get('own_credentials', False)
         
-    if usuario.subscription.plan == 'subscriber':
+    if usuario.subscription.plan == 'subscriber' and own_credentials==False:
         azure_api_key =os.getenv("AZURE_API_KEY")
         service_region = "brazilsouth"
-        
-    else: 
+    elif usuario.subscription.plan == 'subscriber' and own_credentials==True:
         credenciales = db.query(AzureCredentials).filter(AzureCredentials.user_id == user_id).first()
         azure_api_key = credenciales.azure_key
         service_region = credenciales.region
-        azure_api_key = decrypt_str(azure_api_key)   
+        azure_api_key = decrypt_str(azure_api_key)
+    elif usuario.subscription.plan == 'freemium' and own_credentials==True:
+        credenciales = db.query(AzureCredentials).filter(AzureCredentials.user_id == user_id).first()
+        if not credenciales:
+            raise HTTPException(status_code=400, detail="No Azure credentials found for this user")
+        azure_api_key = credenciales.azure_key
+        service_region = credenciales.region
+        azure_api_key = decrypt_str(azure_api_key)
+    else:
+        raise HTTPException(status_code=403, detail="Process error. Please contact support.")
 
     endpoint = f"https://{service_region}.tts.speech.microsoft.com/cognitiveservices/v1"
     

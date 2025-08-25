@@ -7,9 +7,10 @@ import os
 load_dotenv() 
 SECRET_KEY = os.getenv('PRIVATE_SECRET')
 
-user_data = {
+
+user_data ={'data': {
     "id": "3fb5115c-778c-4fe2-a479-57f9224229ad"
-}
+}}
 
 def crer_token(user: dict)-> str:
     return jwt.encode(user, SECRET_KEY, algorithm='HS256')

@@ -160,7 +160,7 @@ Para activar la configuración de CORS de desarrollo y asegurar un manejo consis
 **Comando de Ejemplo:**
 
 ```bash
-APP_ENV=development uvicorn app.main:app --reload --host localhost
+uvicorn app.main:app --reload --host localhost
 ```
 
 Siguiendo estos pasos, tu entorno de desarrollo debería manejar correctamente CORS y permitir que las cookies se envíen entre tu frontend y tu backend.

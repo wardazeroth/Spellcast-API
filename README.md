@@ -138,3 +138,29 @@ userToken	JWT	   Token de autenticación del usuario
 200 OK: Token válido. Se retorna información básica del usuario decodificada del token.
 401 Unauthorized: Token inválido, expirado o ausente.
 
+## Configuración de Desarrollo: CORS y Manejo de Cookies
+
+Al ejecutar la aplicación en un entorno de desarrollo, es posible que encuentres problemas de Cross-Origin Resource Sharing (CORS), especialmente al trabajar con cookies. Esto ocurre típicamente porque los navegadores tratan a `localhost` y `127.0.0.1` como orígenes diferentes, lo que puede impedir que las cookies se envíen correctamente entre tu frontend (ej., ejecutándose en `http://localhost:5173`) y tu backend (ej., ejecutándose en `http://127.0.0.1:8000`).
+
+Para asegurar un comportamiento correcto de CORS y el manejo de cookies en desarrollo, sigue estos pasos:
+
+### 1. Configuración del Backend
+
+El backend está configurado para permitir condicionalmente solicitudes desde `http://localhost:5173` cuando se ejecuta en un entorno de desarrollo. Esto se controla mediante la variable de entorno `APP_ENV`.
+
+-   **`app/main.py`:** El `CORSMiddleware` está configurado para incluir `http://localhost:5173` en su lista `allow_origins` si `APP_ENV` se establece en `development`.
+
+### 2. Ejecución del Servidor de Desarrollo
+
+Para activar la configuración de CORS de desarrollo y asegurar un manejo consistente del origen, debes:
+
+-   **Establecer `APP_ENV` a `development`:** Esta variable de entorno indica al backend que habilite las reglas de CORS específicas para desarrollo.
+-   **Ejecutar Uvicorn con `--host localhost`:** Esto asegura que tu backend sea accesible a través del dominio `localhost`, coincidiendo con el origen de tu frontend.
+
+**Comando de Ejemplo:**
+
+```bash
+uvicorn app.main:app --reload --host localhost
+```
+
+Siguiendo estos pasos, tu entorno de desarrollo debería manejar correctamente CORS y permitir que las cookies se envíen entre tu frontend y tu backend.

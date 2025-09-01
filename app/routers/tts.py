@@ -11,15 +11,8 @@ import io, os, httpx
 import tempfile
 load_dotenv()
 
-default_voice = "es-CL-LorenzoNeural"
-
 router = APIRouter(prefix="/tts", tags=["tts"])
 
-# def iterfile(path:str):
-#     with open(path, 'rb') as file_like:
-#         yield from file_like
-#     os.remove(path)
-    
 def build_ssml(text: str, voice: str) -> str:
     return f"""
     <speak version='1.0' xml:lang='es-ES'>
@@ -34,7 +27,84 @@ def remove_file(path):
         print('Archivo temporal eliminado correctamente')
     except Exception as e: 
         print(f'Error eliminando archivo temporal: {e}')
+
+default_voice = "es-CL-LorenzoNeural"
+
+@router.post('/')
+async def text_to_speech(request: Request, db: Session = Depends(get_db)): 
+    user_id = request.state.user.get('id')
+    usuario= db.query(Users).filter(Users.id == user_id).first()
     
+    if not usuario:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    body = await request.json()
+    text = body.get('text')
+    voice = body.get('voice')
+    own_credentials = body.get('own_credentials', False)
+    
+    credenciales = db.query(AzureCredentials).filter(AzureCredentials.user_id == user_id).first()
+        
+    if usuario.subscription.plan == 'subscriber' and own_credentials==False:
+        azure_api_key =os.getenv("AZURE_API_KEY")
+        service_region = "brazilsouth"
+    elif usuario.subscription.plan == 'subscriber' and own_credentials==True:
+        credenciales = credenciales
+        azure_api_key = credenciales.azure_key
+        service_region = credenciales.region
+        azure_api_key = decrypt_str(azure_api_key)
+    elif usuario.subscription.plan == 'freemium' and own_credentials==True:
+        credenciales = credenciales
+        if not credenciales:
+            raise HTTPException(status_code=400, detail="No Azure credentials found for this user")
+        azure_api_key = credenciales.azure_key
+        service_region = credenciales.region
+        azure_api_key = decrypt_str(azure_api_key)
+    else:
+        raise HTTPException(status_code=403, detail="Process error. Please contact support.")
+
+    endpoint = f"https://{service_region}.tts.speech.microsoft.com/cognitiveservices/v1"
+    
+    headers = {
+        "Ocp-Apim-Subscription-Key": azure_api_key,
+        "Content-Type": "application/ssml+xml",
+        "X-Microsoft-OutputFormat": "audio-16khz-32kbitrate-mono-mp3",
+        "User-Agent": "fastapi-tts"
+    }
+    
+    ssml = build_ssml(text, voice or default_voice)
+    
+    async with httpx.AsyncClient(timeout=None) as client:
+        response = await client.post(endpoint, headers= headers, content=ssml)
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail= response.text)
+    
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
+    tmp_file.write(response.content)
+    tmp_file.flush()
+    tmp_file.close()
+        
+    #Abrir el archivo para hacer streaming 
+    file_stream = open(tmp_file.name, mode='rb')
+    
+    def iterfile():
+        try:
+            yield from file_stream
+        finally: 
+            file_stream.close()
+            remove_file(tmp_file.name) #Se elimina el archivo temporal solo al finalizar el streaming
+    
+    return StreamingResponse(  
+        iterfile(), media_type='audio/mpeg',
+        headers={"Content-Disposition": 'attachment; filename="tts.mp3"'}
+    )
+    
+
+# def iterfile(path:str):
+#     with open(path, 'rb') as file_like:
+#         yield from file_like
+#     os.remove(path)
+        
 # @router.post('/')
 # async def text_to_speech(request: Request, tts_req: TTSRequest, db: Session = Depends(get_db)): 
 #     # user_id = request.state.user.get('id')
@@ -83,73 +153,4 @@ def remove_file(path):
 #             'Content-Disposition': 'attachment; filename="tts.wav"'
 #         }
 #     )
-
-@router.post('/')
-async def text_to_speech(request: Request, db: Session = Depends(get_db)): 
-    user_id = request.state.user.get('id')
-    usuario= db.query(Users).filter(Users.id == user_id).first()
-    
-    if not usuario:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    body = await request.json()
-    text = body.get('text')
-    voice = body.get('voice')
-    own_credentials = body.get('own_credentials', False)
-        
-    if usuario.subscription.plan == 'subscriber' and own_credentials==False:
-        azure_api_key =os.getenv("AZURE_API_KEY")
-        service_region = "brazilsouth"
-    elif usuario.subscription.plan == 'subscriber' and own_credentials==True:
-        credenciales = db.query(AzureCredentials).filter(AzureCredentials.user_id == user_id).first()
-        azure_api_key = credenciales.azure_key
-        service_region = credenciales.region
-        azure_api_key = decrypt_str(azure_api_key)
-    elif usuario.subscription.plan == 'freemium' and own_credentials==True:
-        credenciales = db.query(AzureCredentials).filter(AzureCredentials.user_id == user_id).first()
-        if not credenciales:
-            raise HTTPException(status_code=400, detail="No Azure credentials found for this user")
-        azure_api_key = credenciales.azure_key
-        service_region = credenciales.region
-        azure_api_key = decrypt_str(azure_api_key)
-    else:
-        raise HTTPException(status_code=403, detail="Process error. Please contact support.")
-
-    endpoint = f"https://{service_region}.tts.speech.microsoft.com/cognitiveservices/v1"
-    
-    headers = {
-        "Ocp-Apim-Subscription-Key": azure_api_key,
-        "Content-Type": "application/ssml+xml",
-        "X-Microsoft-OutputFormat": "audio-16khz-32kbitrate-mono-mp3",
-        "User-Agent": "fastapi-tts"
-    }
-    
-    ssml = build_ssml(text, voice or default_voice)
-    
-    async with httpx.AsyncClient(timeout=None) as client:
-        response = await client.post(endpoint, headers= headers, content=ssml)
-        if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail= response.text)
-    
-    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
-    tmp_file.write(response.content)
-    tmp_file.flush()
-    tmp_file.close()
-        
-    #Abrir el archivo para hacer streaming 
-    file_stream = open(tmp_file.name, mode='rb')
-    
-    def iterfile():
-        try:
-            yield from file_stream
-        finally: 
-            file_stream.close()
-            remove_file(tmp_file.name) #Se elimina el archivo temporal solo al finalizar el streaming
-    
-    return StreamingResponse(  
-        iterfile(), media_type='audio/mpeg',
-        headers={"Content-Disposition": 'attachment; filename="tts.mp3"'}
-    )
-    
-    
     

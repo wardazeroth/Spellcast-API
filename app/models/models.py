@@ -23,10 +23,9 @@ class AzureCredentials(Base):
     __table_args__ = {"schema": "spellcast"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(String, unique=True, nullable=False)
+    user_id = Column(String, nullable=False)
     azure_key = Column(Text, nullable=False)
     region = Column(String, nullable=False)
-    voice = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class UserSubscription(Base):

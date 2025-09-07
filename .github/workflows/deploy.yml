@@ -1,57 +1,19 @@
-name: Deploy (api-spellcast)
+name: Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
-
-# evita despliegues simultáneos
-concurrency:
-  group: fly-api-spellcast
-  cancel-in-progress: true
-
-permissions:
-  contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      FLY_APP: api-spellcast
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      # 1) Verifica que el secret esté presente
-      - name: Sanity: token presente
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          if [ -z "$FLY_API_TOKEN" ]; then
-            echo "::error::Falta el secret FLY_API_TOKEN"; exit 1;
-          fi
-
-      # 2) Confirma autenticación y visibilidad de la app
-      - name: Sanity: auth & app
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          flyctl version
-          flyctl auth whoami
-          flyctl apps list | (grep -w "$FLY_APP" && echo "App visible") || echo "App no listada (puede existir igual)"
-          flyctl status -a "$FLY_APP" || echo "Aviso: status no encontró la app; intentaremos deploy igual"
-
-      # 3) Deploy (usa fly.toml si existe y fuerza --app)
       - name: Deploy to Fly
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          if [ -f fly.toml ]; then
-            flyctl deploy --config fly.toml --app "$FLY_APP" --remote-only --strategy rolling
-          else
-            flyctl deploy --app "$FLY_APP" --remote-only --strategy rolling
-          fi
+        run: flyctl deploy --app api-spellcast --remote-only --strategy rolling

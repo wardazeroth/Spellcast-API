@@ -1,4 +1,4 @@
-# PROYECTO_SPELLCAST
+# SPELLCAST API
 
 Spellcast es una API desarrollada con FastAPI y SQLAlchemy para la gestión de usuarios, bibliotecas y libros, permitiendo almacenar archivos PDF y extraer su contenido de texto.
 

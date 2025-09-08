@@ -246,7 +246,7 @@ async def update_credentials(request: Request, db: Session = Depends(get_db)):
 
 @router.get('/voices/{credential_id}')
 
-async def get_voices(request: Request, reveal: bool = Query(False), db: Session = Depends(get_db)):
+async def get_voices(request: Request, db: Session = Depends(get_db)):
     user_id = request.state.user.get('id')
     usuario = db.query(Users).filter(Users.id == user_id).first()
     if not usuario:

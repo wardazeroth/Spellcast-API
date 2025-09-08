@@ -47,7 +47,7 @@ async def validate_key(region: str, azure_key: str) -> bool:
             raise HTTPException(status_code=500, detail='error fetching key')
         return resp
 
-async def voices_endpoint(region, azure_key, voice):
+async def get_voices_list(region, azure_key):
     url = f"https://{region}.tts.speech.microsoft.com/cognitiveservices/voices/list"
     headers = {"Ocp-Apim-Subscription-Key": azure_key}
     
@@ -56,15 +56,7 @@ async def voices_endpoint(region, azure_key, voice):
         if resp.status_code != 200:
             raise HTTPException(status_code=500, detail='error fetching voice in list')
         voices = resp.json()
-        voices_gender = [(item["ShortName"], item["Gender"]) for item in voices] 
-        voices = [item["ShortName"] for item in voices] 
-        
-        print('nombre y género de las voces: ', voices_gender)  
-
-    if voice not in voices:
-        return False
-    else:
-        return True
+        return voices
         
 
 VALID_REGIONS = { "eastus","eastus2","westus","westus2","westeurope","northeurope","brazilsouth","southcentralus","uksouth","francecentral","germanywestcentral","swedencentral","switzerlandnorth","uaenorth","australiaeast","japaneast","koreacentral","canadacentral","centralindia","southafricanorth"}
@@ -251,4 +243,25 @@ async def update_credentials(request: Request, db: Session = Depends(get_db)):
     except HTTPException as e:
         print('Error deleting credential:', e.detail)
         raise HTTPException(status_code=422, detail="Error deleting credential. Please try again.")
+
+@router.get('/voices/{credential_id}')
+
+async def get_voices(request: Request, reveal: bool = Query(False), db: Session = Depends(get_db)):
+    user_id = request.state.user.get('id')
+    usuario = db.query(Users).filter(Users.id == user_id).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="User not found")
     
+    credential_id = request.path_params['credential_id']
+    credential = db.query(AzureCredentials).filter(AzureCredentials.id == credential_id and AzureCredentials.user_id == user_id).first()
+    
+    #Recordar: Dejar de comentar
+    
+    if not credential:
+        raise HTTPException(status_code=404, detail="Credentials not matched")
+
+    azure_key = credential.azure_key
+    azure_api_key = decrypt_str(azure_key)
+    
+    valid_voices = await get_voices_list(credential.region, azure_api_key)
+    return valid_voices

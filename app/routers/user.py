@@ -6,6 +6,7 @@ from app.database import SessionLocal
 from app.database import DATABASE_URL
 from dotenv import load_dotenv
 from app.models.models import AzureCredentials, Users
+from app.services.voices import get_voice_cache, set_voice_cache
 from utils.fernet_utils import encrypt_str, decrypt_str
 from pydantic import BaseModel
 import httpx
@@ -246,7 +247,7 @@ async def update_credentials(request: Request, db: Session = Depends(get_db)):
 
 @router.get('/voices/{credential_id}')
 
-async def get_voices(request: Request, reveal: bool = Query(False), db: Session = Depends(get_db)):
+async def get_voices(request: Request, db: Session = Depends(get_db)):
     user_id = request.state.user.get('id')
     usuario = db.query(Users).filter(Users.id == user_id).first()
     if not usuario:
@@ -263,5 +264,13 @@ async def get_voices(request: Request, reveal: bool = Query(False), db: Session 
     azure_key = credential.azure_key
     azure_api_key = decrypt_str(azure_key)
     
+    cached = get_voice_cache(credential.region)
+    if cached:
+        print('Hay caché!!')
+        return cached  
+    
     valid_voices = await get_voices_list(credential.region, azure_api_key)
+    set_voice_cache(credential.region, str(valid_voices))
+    print('nuevo caché!') 
+    
     return valid_voices

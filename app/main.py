@@ -7,6 +7,7 @@ from app.database import SessionLocal, engine
 from app.models import models
 from app.routers import accounts, user, tts
 from fastapi.middleware.cors import CORSMiddleware
+from app.redis_client import init_redis
 
 
 models.Base.metadata.create_all(bind=engine)
@@ -52,6 +53,11 @@ def get_db():
 def root():
     return {"message": "Bienvenido a Spellcast API"}
 
+
+#Inicializar redis
+@app.on_event('startup')
+async def startup_event():
+    init_redis()
 
 # Incluir routers
 

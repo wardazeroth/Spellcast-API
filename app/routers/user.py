@@ -101,8 +101,6 @@ async def create_credentials(request: Request, data: CredentialsCreate, db: Sess
         print('Error validating Azure key:', e.detail)
         raise HTTPException(status_code=422, detail="Invalid Azure key or region. Please provide valid credentials.")
 
-
-
 @router.get('/credentials')
 async def get_credentials(request: Request, reveal: bool = Query(False), db: Session = Depends(get_db)):
     user_id = request.state.user.get('id')

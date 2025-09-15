@@ -5,7 +5,7 @@ from middlewares.auth_middleware import verificar_token
 from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine
 from app.models import models
-from app.routers import accounts, user, tts
+from app.routers import accounts, user, tts, subscription
 from fastapi.middleware.cors import CORSMiddleware
 from app.redis_client import init_redis
 
@@ -66,4 +66,5 @@ async def startup_event():
 # app.include_router(book.router)
 app.include_router(accounts.router)
 app.include_router(user.router)
+app.include_router(subscription.router)
 app.include_router(tts.router)

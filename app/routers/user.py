@@ -108,21 +108,22 @@ async def get_credentials(request: Request, reveal: bool = Query(False), db: Ses
     if not usuario:
         raise HTTPException(status_code=404, detail="User not found")
 
-    credenciales = db.query(AzureCredentials).filter(AzureCredentials.user_id == user_id).all()
+    credenciales_list = db.query(AzureCredentials).filter(AzureCredentials.user_id == user_id).all()
     
-    if not credenciales:
+    if not credenciales_list:
         raise HTTPException(status_code=404, detail="Credentials not found")
 
-    # azure_key = credenciales.azure_key
-    # azure_api_key = decrypt_str(azure_key)
-    # azure_key= mask(azure_api_key)
+    response_data = []
+    for cred in credenciales_list:
+        decrypted_key = decrypt_str(cred.azure_key)
+        masked_key = mask(decrypted_key)
+        response_data.append({
+            "id": cred.id,
+            "region": cred.region,
+            "azure_key": masked_key
+        })
     
-    # credenciales = {
-    #     'azure_key': azure_api_key if reveal else azure_key,
-    #     'region': credenciales.region
-    # }
-    
-    return credenciales
+    return response_data
 
 @router.get('/credentials/{id}')
 async def get_credentials(request: Request, reveal: bool = Query(False), db: Session = Depends(get_db)):

@@ -194,7 +194,9 @@ async def update_credentials(request: Request, data: CredentialsUpdate, db: Sess
         if data.region is not None:
             if data.region not in VALID_REGIONS:
                 raise HTTPException(status_code=422, detail="Invalid region. Please provide a valid Azure region.")
-            credencial.region = data.region   
+            credencial.region = data.region
+            
+        
 
         db.commit()
         db.refresh(credencial)

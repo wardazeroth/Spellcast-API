@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, Table
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, Table, Boolean
 from sqlalchemy.orm import relationship, declarative_base
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy_utils import URLType
 from datetime import datetime
 from uuid import uuid4
@@ -27,6 +27,8 @@ class AzureCredentials(Base):
     azure_key = Column(Text, nullable=False)
     region = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    voices = Column(JSONB, nullable=False, server_default='[]')
+    shared = Column(Boolean, default=False)
 
 class UserSubscription(Base):
     __tablename__ = "user_subscription"

@@ -14,10 +14,14 @@ import httpx
 class CredentialsUpdate(BaseModel):
     azure_key: str | None= None
     region: str | None= None
+    voices: list | None= None
+    shared: bool | None= None
     
 class CredentialsCreate(BaseModel):
     azure_key: str 
-    region: str 
+    region: str
+    voices: list | None= None
+    shared: bool | None= False
     
 load_dotenv()
 
@@ -78,14 +82,6 @@ async def create_credentials(request: Request, data: CredentialsCreate, db: Sess
         if data.region not in VALID_REGIONS:
             raise HTTPException(status_code=422, detail="Invalid region. Please provide a valid Azure region.")
         
-        #Consultar en api de voices por región si la voz es válida para esa region
-        # valid_voice =await voices_endpoint(data.region, data.azure_key, data.voice)
-        
-        # if not valid_voice:
-        #     raise HTTPException(status_code=422, detail=f'invalid voice {data.voice} for the region {data.region}')
-            
-        credentials_exists= db.query(AzureCredentials).filter(AzureCredentials.user_id == user_id).first()
-        
         new_credentials = AzureCredentials(
             user_id=usuario.id,
             azure_key=encrypt_str_key,
@@ -101,10 +97,8 @@ async def create_credentials(request: Request, data: CredentialsCreate, db: Sess
         print('Error validating Azure key:', e.detail)
         raise HTTPException(status_code=422, detail="Invalid Azure key or region. Please provide valid credentials.")
 
-
-
 @router.get('/credentials')
-async def get_credentials(request: Request, reveal: bool = Query(False), db: Session = Depends(get_db)):
+async def get_credentials(request: Request, db: Session = Depends(get_db)):
     user_id = request.state.user.get('id')
     usuario = db.query(Users).filter(Users.id == user_id).first()
     if not usuario:
@@ -152,29 +146,35 @@ async def get_credentials(request: Request, reveal: bool = Query(False), db: Ses
     }
     return credencial
 
-@router.patch('/credentials')
-async def update_credentials(request: Request, data: CredentialsUpdate, db: Session = Depends(get_db)): 
-    user_id = request.state.user.get('id')
-    usuario= db.query(Users).filter(Users.id == user_id).first()
+# @router.patch('/credentials')
+# async def update_credentials(request: Request, data: CredentialsUpdate, db: Session = Depends(get_db)): 
+#     user_id = request.state.user.get('id')
+#     usuario= db.query(Users).filter(Users.id == user_id).first()
 
-    if not usuario:
-        raise HTTPException(status_code=404, detail="User not found")
+#     if not usuario:
+#         raise HTTPException(status_code=404, detail="User not found")
     
-    credenciales = db.query(AzureCredentials).filter(AzureCredentials.user_id == user_id).first()
+#     credenciales = db.query(AzureCredentials).filter(AzureCredentials.user_id == user_id).first()
     
-    if data.azure_key is not None:
-        encrypt_str_key = encrypt_str(data.azure_key)
-        credenciales.azure_key = encrypt_str_key
+#     if data.azure_key is not None:
+#         encrypt_str_key = encrypt_str(data.azure_key)
+#         credenciales.azure_key = encrypt_str_key
         
-    if data.region is not None:
-        if data.region not in VALID_REGIONS:
-            raise HTTPException(status_code=422, detail="Invalid region. Please provide a valid Azure region.")
-        credenciales.region = data.region   
+#     if data.region is not None:
+#         if data.region not in VALID_REGIONS:
+#             raise HTTPException(status_code=422, detail="Invalid region. Please provide a valid Azure region.")
+#         credenciales.region = data.region   
+        
+#     if data.voices is not None:
+#         credenciales.voices = data.voices
+        
+#     if data.shared is not None:
+#         credenciales.shared = data.shared
+    
+#     db.commit()
+#     db.refresh(credenciales)
 
-    db.commit()
-    db.refresh(credenciales)
-
-    return {"message": "Credenciales actualizadas", "credentials": data.dict(exclude_unset=True)}
+#     return {"message": "Credenciales actualizadas", "credentials": data.dict(exclude_unset=True)}
 
 @router.patch('/credentials/{id}')
 async def update_credentials(request: Request, data: CredentialsUpdate, db: Session = Depends(get_db)): 
@@ -185,7 +185,9 @@ async def update_credentials(request: Request, data: CredentialsUpdate, db: Sess
         raise HTTPException(status_code=404, detail="User not found")
     
     try:
-        await validate_key(data.region, data.azure_key)
+        if data.region and data.azure_key:
+            await validate_key(data.region, data.azure_key)
+            
         id = request.path_params['id']  
         credencial = db.query(AzureCredentials).filter(AzureCredentials.id == id and AzureCredentials.user_id == user_id).first()
         
@@ -196,8 +198,14 @@ async def update_credentials(request: Request, data: CredentialsUpdate, db: Sess
         if data.region is not None:
             if data.region not in VALID_REGIONS:
                 raise HTTPException(status_code=422, detail="Invalid region. Please provide a valid Azure region.")
-            credencial.region = data.region   
-
+            credencial.region = data.region
+        
+        if data.voices is not None:
+            credencial.voices = data.voices
+        
+        if data.shared is not None:
+            credencial.shared = data.shared
+            
         db.commit()
         db.refresh(credencial)
 

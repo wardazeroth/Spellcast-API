@@ -60,8 +60,17 @@ async def get_voices_list(region, azure_key):
         resp = await client.get(url, headers=headers)
         if resp.status_code != 200:
             raise HTTPException(status_code=500, detail='error fetching voice in list')
+        
+        voices_list = []
         voices = resp.json()
-        return voices
+        for voice in voices:
+            voice_format = {}
+            voice_format['value'] = voice.get('ShortName')
+            voice_format['label'] = voice.get('DisplayName') + ' - ' + voice.get('LocaleName') + ', ' + voice.get('Gender')
+            voice_format['gender'] = voice.get('Gender')
+            voices_list.append(voice_format)
+
+        return voices_list
         
 
 VALID_REGIONS = { "eastus","eastus2","westus","westus2","westeurope","northeurope","brazilsouth","southcentralus","uksouth","francecentral","germanywestcentral","swedencentral","switzerlandnorth","uaenorth","australiaeast","japaneast","koreacentral","canadacentral","centralindia","southafricanorth"}
@@ -146,36 +155,6 @@ async def get_credentials(request: Request, reveal: bool = Query(False), db: Ses
     }
     return credencial
 
-# @router.patch('/credentials')
-# async def update_credentials(request: Request, data: CredentialsUpdate, db: Session = Depends(get_db)): 
-#     user_id = request.state.user.get('id')
-#     usuario= db.query(Users).filter(Users.id == user_id).first()
-
-#     if not usuario:
-#         raise HTTPException(status_code=404, detail="User not found")
-    
-#     credenciales = db.query(AzureCredentials).filter(AzureCredentials.user_id == user_id).first()
-    
-#     if data.azure_key is not None:
-#         encrypt_str_key = encrypt_str(data.azure_key)
-#         credenciales.azure_key = encrypt_str_key
-        
-#     if data.region is not None:
-#         if data.region not in VALID_REGIONS:
-#             raise HTTPException(status_code=422, detail="Invalid region. Please provide a valid Azure region.")
-#         credenciales.region = data.region   
-        
-#     if data.voices is not None:
-#         credenciales.voices = data.voices
-        
-#     if data.shared is not None:
-#         credenciales.shared = data.shared
-    
-#     db.commit()
-#     db.refresh(credenciales)
-
-#     return {"message": "Credenciales actualizadas", "credentials": data.dict(exclude_unset=True)}
-
 @router.patch('/credentials/{id}')
 async def update_credentials(request: Request, data: CredentialsUpdate, db: Session = Depends(get_db)): 
     user_id = request.state.user.get('id')
@@ -213,24 +192,6 @@ async def update_credentials(request: Request, data: CredentialsUpdate, db: Sess
     except HTTPException as e:
         print('Error validating Azure key:', e.detail)
         raise HTTPException(status_code=422, detail="Invalid Azure key or region. Please provide valid credentials.")
-
-@router.delete('/credentials')
-async def update_credentials(request: Request, db: Session = Depends(get_db)): 
-    user_id = request.state.user.get('id')
-    usuario= db.query(Users).filter(Users.id == user_id).first()
-
-    if not usuario:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    credenciales = db.query(AzureCredentials).filter(AzureCredentials.user_id == user_id).first()
-    
-    if not credenciales:
-        raise HTTPException(status_code=404, detail="Credentials not found")
-    
-    db.delete(credenciales)
-    db.commit()
-
-    return {"message": "Credenciales eliminadas correctamente"}
     
 @router.delete('/credentials/{id}')
 async def update_credentials(request: Request, db: Session = Depends(get_db)): 
@@ -255,7 +216,6 @@ async def update_credentials(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=422, detail="Error deleting credential. Please try again.")
 
 @router.get('/voices/{credential_id}')
-
 async def get_voices(request: Request, db: Session = Depends(get_db)):
     user_id = request.state.user.get('id')
     usuario = db.query(Users).filter(Users.id == user_id).first()
@@ -266,13 +226,11 @@ async def get_voices(request: Request, db: Session = Depends(get_db)):
     credential = db.query(AzureCredentials).filter(AzureCredentials.id == credential_id and AzureCredentials.user_id == user_id).first()
     
     #Recordar: Dejar de comentar
-    
     if not credential:
         raise HTTPException(status_code=404, detail="Credentials not matched")
 
     azure_key = credential.azure_key
     azure_api_key = decrypt_str(azure_key)
-    
     cached = get_voice_cache(credential.region)
     if cached:
         print('Hay caché!!')

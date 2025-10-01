@@ -4,7 +4,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, registry
 from app.database import get_db
 from pydantic import BaseModel
-from app.models.models import Users, AzureCredentials
+from app.models.models import Users, AzureCredentials, UserSubscription
 from utils.fernet_utils import decrypt_str
 from dotenv import load_dotenv
 import io, os, httpx
@@ -42,19 +42,17 @@ async def text_to_speech(request: Request, db: Session = Depends(get_db)):
     text = body.get('text')
     voice = body.get('voice')
     own_credentials = body.get('own_credentials', False)
-    
-    credenciales = db.query(AzureCredentials).filter(AzureCredentials.user_id == user_id).first()
-        
+            
     if usuario.subscription.plan == 'subscriber' and own_credentials==False:
         azure_api_key =os.getenv("AZURE_API_KEY")
         service_region = "brazilsouth"
     elif usuario.subscription.plan == 'subscriber' and own_credentials==True:
-        credenciales = credenciales
+        credenciales = db.query(UserSubscription).filter(UserSubscription.user_id == user_id).first().current_credential
         azure_api_key = credenciales.azure_key
         service_region = credenciales.region
         azure_api_key = decrypt_str(azure_api_key)
     elif usuario.subscription.plan == 'freemium' and own_credentials==True:
-        credenciales = credenciales
+        credenciales = db.query(UserSubscription).filter(UserSubscription.user_id == user_id).first().current_credential
         if not credenciales:
             raise HTTPException(status_code=400, detail="No Azure credentials found for this user")
         azure_api_key = credenciales.azure_key

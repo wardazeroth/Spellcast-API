@@ -20,8 +20,8 @@ def init_redis():
             port = int(os.getenv('REDIS_PORT', 6379)),
             password=os.getenv('REDIS_PASSWORD', None),
             db= 0,
-            socket_connect_timeout=2,
-            socket_timeout=2
+            socket_connect_timeout=5,
+            socket_timeout=5
         )
         redis_client.ping()
         logger.info('COnexión a Redis establecida')

@@ -119,13 +119,16 @@ async def get_credentials(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Credentials not found")
 
     response_data = []
+    
     for cred in credenciales_list:
         decrypted_key = decrypt_str(cred.azure_key)
         masked_key = mask(decrypted_key)
         response_data.append({
             "id": cred.id,
             "region": cred.region,
-            "azure_key": masked_key
+            "azure_key": masked_key,
+            "voices": cred.voices,
+            "shared": cred.shared
         })
     
     return response_data
@@ -233,11 +236,8 @@ async def get_voices(request: Request, db: Session = Depends(get_db)):
     azure_api_key = decrypt_str(azure_key)
     cached = get_voice_cache(credential.region)
     if cached:
-        print('Hay caché!!')
         return cached  
     
     valid_voices = await get_voices_list(credential.region, azure_api_key)
     set_voice_cache(credential.region, str(valid_voices))
-    print('nuevo caché!') 
-    
     return valid_voices

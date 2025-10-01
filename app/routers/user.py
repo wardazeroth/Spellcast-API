@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from app.database import SessionLocal
 from app.database import DATABASE_URL
 from dotenv import load_dotenv
-from app.models.models import AzureCredentials, Users
+from app.models.models import AzureCredentials, Users, UserSubscription
 from app.services.voices import get_voice_cache, set_voice_cache
 from utils.fernet_utils import encrypt_str, decrypt_str
 from pydantic import BaseModel
@@ -241,3 +241,29 @@ async def get_voices(request: Request, db: Session = Depends(get_db)):
     valid_voices = await get_voices_list(credential.region, azure_api_key)
     set_voice_cache(credential.region, str(valid_voices))
     return valid_voices
+
+@router.patch('/current_credential')
+async def update_current_credential(request: Request, db: Session = Depends(get_db)): 
+    user_id = request.state.user.get('id')
+    usuario= db.query(Users).filter(Users.id == user_id).first()
+
+    if not usuario:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    body = await request.json()
+    current_credential = body.get('credential_id')
+    
+    try:
+        db.query(AzureCredentials).filter(AzureCredentials.id == current_credential and AzureCredentials.user_id == user_id).first()
+        
+    except:
+        raise HTTPException(status_code=404, detail="Credential not found or does not belong to the user")
+    
+    subscription = db.query(UserSubscription).filter(UserSubscription.user_id == user_id).first()
+    
+    
+    subscription.current_credential = current_credential
+    
+    db.commit()
+    db.refresh(subscription)
+    return {"message": "Current credential updated", "current_credential": subscription.current_credential}

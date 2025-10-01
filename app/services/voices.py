@@ -1,6 +1,5 @@
 from app.redis_client import redis_client, DEFAULT_TTL, cache_get, cache_set
 
-
 def get_voice_cache(region):
     key = f"voices:{region}"
     return cache_get(key)

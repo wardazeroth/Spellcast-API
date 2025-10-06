@@ -1,7 +1,7 @@
 from cryptography.fernet import Fernet
 
-# Generar una nueva clave
+# Generate a key
 key = Fernet.generate_key()
 
-# Mostrarla
+# Show the key
 print(key.decode())

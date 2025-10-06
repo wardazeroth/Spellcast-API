@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.database import SessionLocal
+from app.integrations.alchemy import SessionLocal
 from app.models.models import Book
 
 router = APIRouter(prefix="/books", tags=["Books"])

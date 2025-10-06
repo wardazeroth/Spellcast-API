@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, Request, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import MetaData, Table, Column, Integer, String, select
 from sqlalchemy import create_engine
-from app.database import SessionLocal
-from app.database import DATABASE_URL
+from app.integrations.alchemy import SessionLocal
+from app.integrations.alchemy import DATABASE_URL
 from dotenv import load_dotenv
 from app.models.models import AzureCredentials, Users, UserSubscription
-from app.services.voices import get_voice_cache, set_voice_cache
-from utils.fernet_utils import encrypt_str, decrypt_str
+from app.integrations.redis import get_cache, set_cache
+from app.integrations.fernet import encrypt_str, decrypt_str
 from pydantic import BaseModel
 import httpx
 
@@ -234,12 +234,14 @@ async def get_voices(request: Request, db: Session = Depends(get_db)):
 
     azure_key = credential.azure_key
     azure_api_key = decrypt_str(azure_key)
-    cached = get_voice_cache(credential.region)
+    key = f"voices:{credential.region}"
+    cached = get_cache(key)
     if cached:
         return cached  
     
     valid_voices = await get_voices_list(credential.region, azure_api_key)
-    set_voice_cache(credential.region, str(valid_voices))
+    key = f"voices:{credential.region}"
+    set_cache(key, str(valid_voices))
     return valid_voices
 
 @router.patch('/current_credential')

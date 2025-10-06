@@ -4,7 +4,7 @@ import logging
 from typing import Optional
 from contextlib import suppress
 
-#Configuración de logging
+# Logger configuration
 logger = logging.getLogger('cache')
 logger.setLevel(logging.INFO)
 
@@ -24,45 +24,43 @@ def init_redis():
             socket_timeout=5
         )
         redis_client.ping()
-        logger.info('COnexión a Redis establecida')
+        logger.info('Redis connection established')
     except redis.RedisError as e:
-        logger.warning(f'Redis no disponible: {e}')
+        logger.warning(f'Unabled connection: {e}')
         redis_client = None
 
-#Wrappers de caché
-def cache_set(key:str, value:str, ttl: Optional[int]= None):
+# Cache wrappers
+def set_cache(key:str, value:str, ttl: Optional[int]= None):
     if redis_client is None:
         #TODO raise Exception
         return
     try:
         redis_client.set(key, value, ex=ttl or DEFAULT_TTL)
     except redis.RedisError as e:
-        logger.warning(f'No se pudo guardar en caché {key}: {e}')
+        logger.warning(f'Could not save {key} to cache: {e}')
 
-def cache_get(key:str) -> Optional[str]:
+def get_cache(key:str) -> Optional[str]:
     if redis_client is None:
         return None
     try:   
         value = redis_client.get(key)
         return value.decode() if value else None
     except redis.RedisError as e:
-        logger.warning(f'No se pudo obtener{key} de la caché: {e}')
+        logger.warning(f'Could not retrieve {key} from cache: {e}')
 
-def cache_delete(key: str):
+def delete_cache(key: str):
     if redis_client is None:
         return
     try:
         redis_client.delete(key)
     except redis.RedisError as e:
-        logger.warning(f'No se pudo borrar {key} de la caché: {e}')
+        logger.warning(f'Could not delete {key} from cache: {e}')
 
-def cache_keys(pattern:str):
+def keys_cache(pattern:str):
     if redis_client is None:
         return []
     try:
         return [k.decode('utf-8') for k in redis_client.keys(pattern)]
     except redis.RedisError as e:
-        logger.warning(f'No se pudo listar claves con patrón {pattern}: {e}')
+        logger.warning(f'Could not list keys with pattern {pattern}: {e}')
         return []
-
-

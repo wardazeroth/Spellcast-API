@@ -1,5 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import Request, HTTPException
 from jose import jwt, JWTError 
 import os
 from dotenv import load_dotenv      
@@ -8,27 +7,25 @@ load_dotenv()
 SECRET_KEY= os.getenv("PRIVATE_SECRET")
 ALGORITHM = os.getenv('ALGORITHM')
 
-async def verificar_token(request: Request, call_next):
+async def authentication(request: Request, call_next):
 
     if request.method == "OPTIONS":
         return await call_next(request)
 
-    rutas_publicas = ["/", "/favicon.ico", '/docs', "/openapi.json"]
+    public_routes = ["/", "/favicon.ico", '/docs', "/openapi.json"]
 
-    if request.url.path in rutas_publicas:
+    if request.url.path in public_routes:
         return await call_next(request)
 
     token = request.cookies.get('userToken')
-    print("Token recibido:", token)
     if not token:
-        raise HTTPException(status_code=401, detail='Token no proporcionado')
+        raise HTTPException(status_code=401, detail='Token not provided')
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print("Payload decodificado:", payload)
         request.state.user = payload.get('data')
 
     except JWTError:
-        raise HTTPException(status_code=401, detail='Token no es válido o ya expiró')
+        raise HTTPException(status_code=401, detail='Token is not valid or has expired')
     response = await call_next(request)
     return response
 

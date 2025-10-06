@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
-from app.database import SessionLocal
-from app.database import DATABASE_URL
+from app.integrations.alchemy import SessionLocal
+from app.integrations.alchemy import DATABASE_URL
 from dotenv import load_dotenv
 from app.models.models import UserSubscription, Users
 

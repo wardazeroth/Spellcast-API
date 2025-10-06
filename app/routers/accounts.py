@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.middleware import Middleware
 from sqlalchemy.orm import Session
-from app.database import get_db
+from app.integrations.alchemy import get_db
 from app.models.models import Users
 from dotenv import load_dotenv
 load_dotenv()

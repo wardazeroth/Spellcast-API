@@ -1,8 +1,7 @@
-# app/security/fernet_utils.py
 import os
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet
 
-FERNET_KEY = os.environ["FERNET_KEY"]  # levántala con python-dotenv o tu config
+FERNET_KEY = os.environ["FERNET_KEY"]
 fernet = Fernet(FERNET_KEY)
 
 def encrypt_str(plain: str) -> str:

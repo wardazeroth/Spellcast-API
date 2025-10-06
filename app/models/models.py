@@ -1,14 +1,11 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, Table, Boolean
-from sqlalchemy.orm import relationship, declarative_base
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy_utils import URLType
-from datetime import datetime
 from uuid import uuid4
-from app.database import engine, Base
+from app.integrations.alchemy import engine, Base
+from sqlalchemy import Column, String, ForeignKey, Text, DateTime, Table, Boolean
+from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import UUID, JSONB
+from datetime import datetime
 
-# Base = declarative_base()  # unificar todo bajo este Base
-
-# reflejar Users desde schema 'accounts'
+# Reflect Users table from accounts schema
 class Users(Base):
     __table__ = Table(
         "users",
@@ -17,7 +14,7 @@ class Users(Base):
         schema="accounts"
     )
 
-# Tablas nuevas en spellcast
+# New models in spellcast schema
 class AzureCredentials(Base):
     __tablename__ = "azure_credentials"
     __table_args__ = {"schema": "spellcast"}
@@ -41,7 +38,7 @@ class UserSubscription(Base):
 
     user = relationship("Users", uselist=False)
 
-#relacion bidireccional, desde Users a UserSubscription
+# Bidirectional relationship from Users to UserSubscription
 Users.subscription = relationship(
     UserSubscription,
     uselist=False, 

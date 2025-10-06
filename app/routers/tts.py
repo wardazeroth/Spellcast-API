@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import StreamingResponse
 # import azure.cognitiveservices.speech as speechsdk
 from sqlalchemy.orm import Session, registry
-from app.database import get_db
+from app.integrations.alchemy import get_db
 from pydantic import BaseModel
 from app.models.models import Users, AzureCredentials, UserSubscription
-from utils.fernet_utils import decrypt_str
+from app.integrations.fernet import decrypt_str
 from dotenv import load_dotenv
 import io, os, httpx
 import tempfile

@@ -1,35 +1,25 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
-from fastapi.middleware import Middleware
 from sqlalchemy.orm import Session
 from app.integrations.alchemy import get_db
 from app.models.models import Users
-from dotenv import load_dotenv
-load_dotenv()
 
 router = APIRouter(prefix="/accounts", tags=["Accounts"])
 
 @router.get('/')
-async def validar_token(request: Request, db: Session = Depends(get_db)): 
-    print('request state user es: ', request.state.user)
+async def get_user_data(request: Request, db: Session = Depends(get_db)): 
     user_id = request.state.user.get('id')
-    print('el id del user es: ', user_id)
+    user = db.query(Users).filter(Users.id == user_id).first()
 
-    usuario= db.query(Users).filter(Users.id == user_id).first()
-    print(usuario)
-
-    if not usuario:
-        raise HTTPException(status_code=404, detail={'message': "Usuario no encontrado", 'logged': False})
+    if not user:
+        raise HTTPException(status_code = 404, detail = { 'message': "Usuario no encontrado", 'logged': False })
     
-    print('y esto?', usuario)  
     userData = { 
-        'id': usuario.id,
-        'username': usuario.username,
-        'email': usuario.email,
-        'isVerified': usuario.isVerified,
-        'role': usuario.role,
-        'profilePic': usuario.profilePic or usuario.googlePic
+        'id': user.id,
+        'role': user.role,
+        'email': user.email,
+        'username': user.username,
+        'isVerified': user.isVerified,
+        'profilePic': user.profilePic or user.googlePic
     }
     
-    print('userData: ', userData)
-
-    return ({ 'logged': True, 'userData': userData})     
+    return ({ 'logged': True, 'userData': userData })     

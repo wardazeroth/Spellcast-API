@@ -4,74 +4,15 @@ from sqlalchemy import MetaData, Table, Column, Integer, String, select
 from sqlalchemy import create_engine
 from app.integrations.alchemy import SessionLocal
 from app.integrations.alchemy import DATABASE_URL
-from dotenv import load_dotenv
 from app.models.models import AzureCredentials, Users, UserSubscription
 from app.integrations.redis import get_cache, set_cache
 from app.integrations.fernet import encrypt_str, decrypt_str
-from pydantic import BaseModel
-import httpx
-
-class CredentialsUpdate(BaseModel):
-    azure_key: str | None= None
-    region: str | None= None
-    voices: list | None= None
-    shared: bool | None= None
-    
-class CredentialsCreate(BaseModel):
-    azure_key: str 
-    region: str
-    voices: list | None= None
-    shared: bool | None= False
-    
-load_dotenv()
-
-engine = create_engine(
-    DATABASE_URL
-)
+from app.integrations.alchemy import get_db
+from app.interfaces.credentials import CredentialsCreate, CredentialsUpdate
+from app.services.azure import validate_key, get_voices_list
+from app.utils.mask import mask
 
 router = APIRouter(prefix="/user", tags=["User"])
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        
-def mask(secret: str | None, show: int= 3, mask_char:str = '*')-> str:
-    return (mask_char * 6) + secret[-show:]
-
-async def validate_key(region: str, azure_key: str) -> bool:
-    url = f"https://{region}.api.cognitive.microsoft.com/sts/v1.0/issueToken"
-    headers = {"Ocp-Apim-Subscription-Key": azure_key,
-    'Content-Type': 'application/x-www-form-urlencoded'} 
-    
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(url, headers=headers)
-        if resp.status_code != 200:
-            raise HTTPException(status_code=500, detail='error fetching key')
-        return resp
-
-async def get_voices_list(region, azure_key):
-    url = f"https://{region}.tts.speech.microsoft.com/cognitiveservices/voices/list"
-    headers = {"Ocp-Apim-Subscription-Key": azure_key}
-    
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(url, headers=headers)
-        if resp.status_code != 200:
-            raise HTTPException(status_code=500, detail='error fetching voice in list')
-        
-        voices_list = []
-        voices = resp.json()
-        for voice in voices:
-            voice_format = {}
-            voice_format['value'] = voice.get('ShortName')
-            voice_format['label'] = voice.get('DisplayName') + ' - ' + voice.get('LocaleName') + ', ' + voice.get('Gender')
-            voice_format['gender'] = voice.get('Gender')
-            voices_list.append(voice_format)
-
-        return voices_list
-        
 
 VALID_REGIONS = { "eastus","eastus2","westus","westus2","westeurope","northeurope","brazilsouth","southcentralus","uksouth","francecentral","germanywestcentral","swedencentral","switzerlandnorth","uaenorth","australiaeast","japaneast","koreacentral","canadacentral","centralindia","southafricanorth"}
 

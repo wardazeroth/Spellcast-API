@@ -1,13 +1,11 @@
 
 from jose import jwt
-from dotenv import load_dotenv
+from app.config import PRIVATE_SECRET, ID
 import os
 
 
-load_dotenv() 
-SECRET_KEY = os.getenv('PRIVATE_SECRET')
-ID = os.getenv('ID')
-
+SECRET_KEY = PRIVATE_SECRET
+ID = ID
 
 user_data ={'data': {
     "id": ID

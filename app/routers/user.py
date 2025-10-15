@@ -1,9 +1,5 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import MetaData, Table, Column, Integer, String, select
-from sqlalchemy import create_engine
-from app.integrations.alchemy import SessionLocal
-from app.integrations.alchemy import DATABASE_URL
 from app.models.models import AzureCredentials, Users, UserSubscription
 from app.integrations.redis import get_cache, set_cache
 from app.integrations.fernet import encrypt_str, decrypt_str
@@ -11,17 +7,16 @@ from app.integrations.alchemy import get_db
 from app.interfaces.credentials import CredentialsCreate, CredentialsUpdate
 from app.services.azure import validate_key, get_voices_list
 from app.utils.mask import mask
+from app.misc.consts import VALID_REGIONS
 
 router = APIRouter(prefix="/user", tags=["User"])
-
-VALID_REGIONS = { "eastus","eastus2","westus","westus2","westeurope","northeurope","brazilsouth","southcentralus","uksouth","francecentral","germanywestcentral","swedencentral","switzerlandnorth","uaenorth","australiaeast","japaneast","koreacentral","canadacentral","centralindia","southafricanorth"}
 
 @router.post('/credentials')
 async def create_credentials(request: Request, data: CredentialsCreate, db: Session = Depends(get_db)): 
     user_id = request.state.user.get('id')
-    usuario= db.query(Users).filter(Users.id == user_id).first()
+    user= db.query(Users).filter(Users.id == user_id).first()
 
-    if not usuario:
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
     try:
@@ -33,7 +28,7 @@ async def create_credentials(request: Request, data: CredentialsCreate, db: Sess
             raise HTTPException(status_code=422, detail="Invalid region. Please provide a valid Azure region.")
         
         new_credentials = AzureCredentials(
-            user_id=usuario.id,
+            user_id=user.id,
             azure_key=encrypt_str_key,
             region=data.region,
         )
@@ -50,8 +45,8 @@ async def create_credentials(request: Request, data: CredentialsCreate, db: Sess
 @router.get('/credentials')
 async def get_credentials(request: Request, db: Session = Depends(get_db)):
     user_id = request.state.user.get('id')
-    usuario = db.query(Users).filter(Users.id == user_id).first()
-    if not usuario:
+    user = db.query(Users).filter(Users.id == user_id).first()
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     credenciales_list = db.query(AzureCredentials).filter(AzureCredentials.user_id == user_id).all()
@@ -77,8 +72,8 @@ async def get_credentials(request: Request, db: Session = Depends(get_db)):
 @router.get('/credentials/{id}')
 async def get_credentials(request: Request, reveal: bool = Query(False), db: Session = Depends(get_db)):
     user_id = request.state.user.get('id')
-    usuario = db.query(Users).filter(Users.id == user_id).first()
-    if not usuario:
+    user = db.query(Users).filter(Users.id == user_id).first()
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
     id = request.path_params['id']
@@ -102,9 +97,9 @@ async def get_credentials(request: Request, reveal: bool = Query(False), db: Ses
 @router.patch('/credentials/{id}')
 async def update_credentials(request: Request, data: CredentialsUpdate, db: Session = Depends(get_db)): 
     user_id = request.state.user.get('id')
-    usuario= db.query(Users).filter(Users.id == user_id).first()
+    user= db.query(Users).filter(Users.id == user_id).first()
 
-    if not usuario:
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
     try:
@@ -140,9 +135,9 @@ async def update_credentials(request: Request, data: CredentialsUpdate, db: Sess
 @router.delete('/credentials/{id}')
 async def update_credentials(request: Request, db: Session = Depends(get_db)): 
     user_id = request.state.user.get('id')
-    usuario= db.query(Users).filter(Users.id == user_id).first()
+    user= db.query(Users).filter(Users.id == user_id).first()
 
-    if not usuario:
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
     try:     
         id = request.path_params['id']  
@@ -162,8 +157,8 @@ async def update_credentials(request: Request, db: Session = Depends(get_db)):
 @router.get('/voices/{credential_id}')
 async def get_voices(request: Request, db: Session = Depends(get_db)):
     user_id = request.state.user.get('id')
-    usuario = db.query(Users).filter(Users.id == user_id).first()
-    if not usuario:
+    user = db.query(Users).filter(Users.id == user_id).first()
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
     credential_id = request.path_params['credential_id']
@@ -188,9 +183,9 @@ async def get_voices(request: Request, db: Session = Depends(get_db)):
 @router.patch('/current_credential')
 async def update_current_credential(request: Request, db: Session = Depends(get_db)): 
     user_id = request.state.user.get('id')
-    usuario= db.query(Users).filter(Users.id == user_id).first()
+    user= db.query(Users).filter(Users.id == user_id).first()
 
-    if not usuario:
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
     body = await request.json()
@@ -203,8 +198,6 @@ async def update_current_credential(request: Request, db: Session = Depends(get_
         raise HTTPException(status_code=404, detail="Credential not found or does not belong to the user")
     
     subscription = db.query(UserSubscription).filter(UserSubscription.user_id == user_id).first()
-    
-    
     subscription.current_credential = current_credential
     
     db.commit()

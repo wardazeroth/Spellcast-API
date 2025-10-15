@@ -1,11 +1,9 @@
 from fastapi import Request, HTTPException
 from jose import jwt, JWTError 
-import os
-from dotenv import load_dotenv      
+from app.config import PRIVATE_SECRET, ALGORITHM    
 
-load_dotenv()
-SECRET_KEY= os.getenv("PRIVATE_SECRET")
-ALGORITHM = os.getenv('ALGORITHM')
+SECRET_KEY= PRIVATE_SECRET   
+ALGORITHM = ALGORITHM
 
 async def authentication(request: Request, call_next):
 

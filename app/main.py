@@ -1,4 +1,3 @@
-import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from middlewares.auth_middleware import authentication
@@ -6,6 +5,7 @@ from app.models import models
 from app.integrations.redis import init_redis
 from app.integrations.alchemy import SessionLocal, engine
 from app.routers import accounts, user, tts, subscription
+from app.config import APP_ENV
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -17,7 +17,7 @@ origins = [
 ]
 
 # Check if in development environment
-if os.getenv("APP_ENV") == "development":
+if APP_ENV == "development":
     # Specific origin for development to allow credentials
     origins = ["http://localhost:5173"]
 

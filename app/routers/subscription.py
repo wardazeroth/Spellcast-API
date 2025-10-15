@@ -1,25 +1,9 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import create_engine
-from app.integrations.alchemy import SessionLocal
-from app.integrations.alchemy import DATABASE_URL
-from dotenv import load_dotenv
+from app.integrations.alchemy import get_db
 from app.models.models import UserSubscription, Users
 
-load_dotenv()
-
-engine = create_engine(
-    DATABASE_URL
-)
-
 router = APIRouter(prefix="/user", tags=["User"])
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 @router.get('/subscription')
 async def create_subscription(request: Request, db: Session = Depends(get_db)): 

@@ -3,22 +3,23 @@ import redis
 import logging
 from typing import Optional
 from contextlib import suppress
+from app.config import REDIS_PASSWORD, SPELLCAST_VOICES_CACHE_TTL_SECONDS
 
 # Logger configuration
 logger = logging.getLogger('cache')
 logger.setLevel(logging.INFO)
 
-DEFAULT_TTL = int(os.getenv('SPELLCAST_VOICES_CACHE_TTL_SECONDS', 900))
+DEFAULT_TTL = int(SPELLCAST_VOICES_CACHE_TTL_SECONDS or 900)
 
 redis_client: Optional[redis.Redis] = None
-
+ 
 def init_redis():
     global redis_client
     try:
         redis_client = redis.Redis(
             host= os.getenv('REDIS_HOST', 'localhost'),
             port = int(os.getenv('REDIS_PORT', 6379)),
-            password=os.getenv('REDIS_PASSWORD', None),
+            password=(REDIS_PASSWORD, None),
             db= 0,
             socket_connect_timeout=5,
             socket_timeout=5

@@ -1,7 +1,6 @@
-import os
 from cryptography.fernet import Fernet
+from app.config import FERNET_KEY
 
-FERNET_KEY = os.environ["FERNET_KEY"]
 fernet = Fernet(FERNET_KEY)
 
 def encrypt_str(plain: str) -> str:

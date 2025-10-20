@@ -1,8 +1,5 @@
-
 from jose import jwt
 from app.config import PRIVATE_SECRET, ID
-import os
-
 
 SECRET_KEY = PRIVATE_SECRET
 ID = ID

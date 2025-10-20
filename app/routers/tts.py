@@ -1,41 +1,22 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import StreamingResponse
-# import azure.cognitiveservices.speech as speechsdk
-from sqlalchemy.orm import Session, registry
+from sqlalchemy.orm import Session
 from app.integrations.alchemy import get_db
-from pydantic import BaseModel
-from app.models.models import Users, AzureCredentials, UserSubscription
+from app.models import Users, UserSubscription
 from app.integrations.fernet import decrypt_str
-from dotenv import load_dotenv
-import io, os, httpx
+from app.helpers.azure import build_ssml, remove_file
+from app.config import DEFAULT_VOICE
+import os, httpx
 import tempfile
-load_dotenv()
 
 router = APIRouter(prefix="/tts", tags=["tts"])
-
-def build_ssml(text: str, voice: str) -> str:
-    return f"""
-    <speak version='1.0' xml:lang='es-ES'>
-    <voice xml:lang='es-ES' xml:gender='Male' name='{voice}'>
-        {text}
-    </voice>
-    </speak>
-    """
-def remove_file(path):
-    try:
-        os.remove(path)
-        print('Archivo temporal eliminado correctamente')
-    except Exception as e: 
-        print(f'Error eliminando archivo temporal: {e}')
-
-default_voice = "es-CL-LorenzoNeural"
 
 @router.post('/')
 async def text_to_speech(request: Request, db: Session = Depends(get_db)): 
     user_id = request.state.user.get('id')
-    usuario= db.query(Users).filter(Users.id == user_id).first()
+    user= db.query(Users).filter(Users.id == user_id).first()
     
-    if not usuario:
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
     body = await request.json()
@@ -43,15 +24,15 @@ async def text_to_speech(request: Request, db: Session = Depends(get_db)):
     voice = body.get('voice')
     own_credentials = body.get('own_credentials', False)
             
-    if usuario.subscription.plan == 'subscriber' and own_credentials==False:
+    if user.subscription.plan == 'subscriber' and own_credentials==False:
         azure_api_key =os.getenv("AZURE_API_KEY")
         service_region = "brazilsouth"
-    elif usuario.subscription.plan == 'subscriber' and own_credentials==True:
+    elif user.subscription.plan == 'subscriber' and own_credentials==True:
         credenciales = db.query(UserSubscription).filter(UserSubscription.user_id == user_id).first().current_credential
         azure_api_key = credenciales.azure_key
         service_region = credenciales.region
         azure_api_key = decrypt_str(azure_api_key)
-    elif usuario.subscription.plan == 'freemium' and own_credentials==True:
+    elif user.subscription.plan == 'freemium' and own_credentials==True:
         credenciales = db.query(UserSubscription).filter(UserSubscription.user_id == user_id).first().current_credential
         if not credenciales:
             raise HTTPException(status_code=400, detail="No Azure credentials found for this user")
@@ -70,7 +51,7 @@ async def text_to_speech(request: Request, db: Session = Depends(get_db)):
         "User-Agent": "fastapi-tts"
     }
     
-    ssml = build_ssml(text, voice or default_voice)
+    ssml = build_ssml(text, voice or DEFAULT_VOICE)
     
     async with httpx.AsyncClient(timeout=None) as client:
         response = await client.post(endpoint, headers= headers, content=ssml)
@@ -81,8 +62,7 @@ async def text_to_speech(request: Request, db: Session = Depends(get_db)):
     tmp_file.write(response.content)
     tmp_file.flush()
     tmp_file.close()
-        
-    #Abrir el archivo para hacer streaming 
+
     file_stream = open(tmp_file.name, mode='rb')
     
     def iterfile():
@@ -90,65 +70,10 @@ async def text_to_speech(request: Request, db: Session = Depends(get_db)):
             yield from file_stream
         finally: 
             file_stream.close()
-            remove_file(tmp_file.name) #Se elimina el archivo temporal solo al finalizar el streaming
+            remove_file(tmp_file.name)
     
     return StreamingResponse(  
         iterfile(), media_type='audio/mpeg',
         headers={"Content-Disposition": 'attachment; filename="tts.mp3"'}
     )
-    
-
-# def iterfile(path:str):
-#     with open(path, 'rb') as file_like:
-#         yield from file_like
-#     os.remove(path)
-        
-# @router.post('/')
-# async def text_to_speech(request: Request, tts_req: TTSRequest, db: Session = Depends(get_db)): 
-#     # user_id = request.state.user.get('id')
-#     # print('el id del user es: ', user_id)
-#     # usuario= db.query(Users).filter(Users.id == user_id).first()
-#     # print(usuario)
-
-#     # if not usuario:
-#     #     raise HTTPException(status_code=404, detail="User not found")
-    
-#     speech_key =os.getenv("AZURE_API_KEY")
-#     service_region = "brazilsouth"
-
-#     # Crear el objeto del servicio
-#     speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=service_region)
-#     speech_config.speech_synthesis_voice_name = tts_req.voice
-#     # Configurar formato mp3
-#     speech_config.set_speech_synthesis_output_format(speechsdk.SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3)
-    
-#     #Guardar el audio en un archivo
-#     # audio_output = speechsdk.audio.AudioOutputConfig(filename="salida.mp3")
-
-#     # Crear el sintetizador
-#     speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
-
-#     # Texto a convertir
-#     text = tts_req.text
-
-#     # Realizar la conversión
-#     result = speech_synthesizer.speak_text_async(text).get()
-
-#     # Verificar si fue exitoso
-#     if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-#         #AudioDataStream, para obtener bytes mp3
-#         audio_stream = speechsdk.AudioDataStream(result)
-#         with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
-#             audio_stream.save_to_wav_file(tmp_file.name)
-#             temp_path = tmp_file.name
-#         print("¡Texto convertido a voz exitosamente!")
-#     else:
-#         print(f"Error: {result.reason}")
-        
-#     return StreamingResponse (
-#         iterfile(temp_path), media_type='audio/mpeg', 
-#         headers= {
-#             'Content-Disposition': 'attachment; filename="tts.wav"'
-#         }
-#     )
     

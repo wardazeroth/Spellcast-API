@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from middlewares.auth_middleware import authentication
-from app.models import models
+from app import models
 from app.integrations.redis import init_redis
 from app.integrations.alchemy import SessionLocal, engine
 from app.routers import accounts, user, tts, subscription

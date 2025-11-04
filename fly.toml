@@ -4,7 +4,7 @@
 #
 
 app = 'api-spellcast'
-primary_region = 'scl'
+primary_region = 'gru'
 
 [build]
 

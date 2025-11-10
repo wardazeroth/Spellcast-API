@@ -1,16 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.integrations.alchemy import SessionLocal
-from app.models.models import Library
+from app.models import Library
+from app.integrations.alchemy import get_db
 
 router = APIRouter(prefix="/libraries", tags=["Libraries"])
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 @router.get("/")
 def get_libraries(db: Session = Depends(get_db)):

@@ -13,7 +13,7 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 from app.integrations.alchemy import Base
-import app.models.models
+import app.models
 # from app.models import models
 
 config = context.config

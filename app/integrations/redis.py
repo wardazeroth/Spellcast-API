@@ -12,7 +12,7 @@ logger.setLevel(logging.INFO)
 DEFAULT_TTL = int(SPELLCAST_VOICES_CACHE_TTL_SECONDS or 900)
 
 redis_client: Optional[redis.Redis] = None
- 
+
 def init_redis():
     global redis_client
     try:

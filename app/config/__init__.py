@@ -10,7 +10,7 @@ ALGORITHM = os.getenv("ALGORITHM")
 FERNET_KEY = os.getenv("FERNET_KEY")
 AZURE_URL = os.getenv("AZURE_URL")
 AZURE_API_KEY = os.getenv("AZURE_API_KEY")
-APP_ENV = os.getenv("development")
+APP_ENV = os.getenv("APP_ENV")
 ID = os.getenv("ID")
 DEFAULT_VOICE = os.getenv("DEFAULT_VOICE")
 

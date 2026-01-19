@@ -1,13 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from middlewares.auth_middleware import authentication
-from app import models
 from app.integrations.redis import init_redis
 from app.integrations.alchemy import SessionLocal, engine
-from app.routers import accounts, user, tts, subscription, storage
+from app.routers import accounts, user, tts, subscription, storage, document, library
 from app.config import APP_ENV
-
-models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
@@ -54,6 +51,8 @@ async def startup_event():
 # Routers
 app.include_router(tts.router)
 app.include_router(user.router)
+app.include_router(library.router)
 app.include_router(storage.router)
+app.include_router(document.router)
 app.include_router(accounts.router)
 app.include_router(subscription.router)

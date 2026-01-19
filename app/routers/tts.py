@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.integrations.alchemy import get_db
-from app.models import Users, UserSubscription
+from app.models.user import Users, UserSubscription
 from app.integrations.fernet import decrypt_str
 from app.helpers.azure import build_ssml, remove_file
 from app.config import DEFAULT_VOICE

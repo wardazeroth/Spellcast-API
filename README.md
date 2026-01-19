@@ -27,7 +27,7 @@ PROYECTO_SPELLCAST/
 │       ├── __init__.py
 │       ├── user.py
 │       ├── library.py
-│       └── book.py
+│       └── document.py
 │
 ├── alembic/
 │   ├── env.py
@@ -92,7 +92,7 @@ Accede a la documentación interactiva de la API en:
 
 - **users:** Usuarios registrados.
 - **libraries:** Bibliotecas asociadas a usuarios.
-- **books:** Libros asociados a bibliotecas.
+- **documents:** Libros asociados a bibliotecas.
 
 ## Licencia
 

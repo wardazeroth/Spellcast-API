@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException
 from app.models.user import Users
 from uuid import uuid4
 from app.integrations.boto3 import generate_presigned_url
+from app.config import AWS_S3_BUCKET
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -37,13 +38,13 @@ async def create_document(request: Request, db: Session = Depends(get_db)):
         new_document = Document(
             name = name,
             type = type,
-            file_path = url
+            file_path = f"https://{AWS_S3_BUCKET}.s3.amazonaws.com/{key}"
         )
 
         db.add(new_document) 
         db.commit()
         db.refresh(new_document)
-        return()
+        return({'document': new_document,'uploadUrl': url})
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

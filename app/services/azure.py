@@ -26,7 +26,7 @@ async def get_voices_list(region, azure_key):
         for voice in voices:
             voice_format = {}
             voice_format['value'] = voice.get('ShortName')
-            voice_format['label'] = voice.get('DisplayName') + ' - ' + voice.get('LocaleName') + ', ' + voice.get('Gender')
+            voice_format['name'] = voice.get('DisplayName') + ' - ' + voice.get('LocaleName') + ', ' + voice.get('Gender')
             voice_format['gender'] = voice.get('Gender')
             voices_list.append(voice_format)
 

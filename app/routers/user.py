@@ -214,9 +214,8 @@ async def get_voices(request: Request, db: Session = Depends(get_db)):
     cached = get_cache(key)
     if cached:
         return cached
-
+    
     valid_voices = await get_voices_list(credential.region, azure_api_key)
-    key = f"voices:{credential.region}"
     set_cache(key, str(valid_voices))
     return valid_voices
 

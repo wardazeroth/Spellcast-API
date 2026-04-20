@@ -35,8 +35,9 @@ class UserSubscription(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("accounts.users.id"), unique=True, nullable=False)
     plan = Column(String, nullable=False)
-    current_credential = Column(UUID(as_uuid=True), ForeignKey("spellcast.azure_credentials.id"), nullable=True)
-
+    current_credential= Column("current_credential", UUID(as_uuid=True), ForeignKey("spellcast.azure_credentials.id"), nullable=True)
+    
+    credential = relationship("AzureCredentials", uselist=False)
     user = relationship("Users", uselist=False)
 
 # Bidirectional relationship from Users to UserSubscription

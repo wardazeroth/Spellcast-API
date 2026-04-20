@@ -19,7 +19,7 @@ def init_redis():
         redis_client = redis.Redis(
             host= os.getenv('REDIS_HOST', 'localhost'),
             port = int(os.getenv('REDIS_PORT', 6379)),
-            password=(REDIS_PASSWORD, None),
+            password=REDIS_PASSWORD,
             db= 0,
             socket_connect_timeout=5,
             socket_timeout=5
@@ -65,3 +65,4 @@ def keys_cache(pattern:str):
     except redis.RedisError as e:
         logger.warning(f'Could not list keys with pattern {pattern}: {e}')
         return []
+    

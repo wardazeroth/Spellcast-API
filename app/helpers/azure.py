@@ -21,6 +21,7 @@ class TimelineManager:
         self.start_tick = 0
 
     def on_word_boundary(self, event):
+        try:
             word = event.text.strip()
             if not word: return
 
@@ -31,25 +32,31 @@ class TimelineManager:
             
             self.current_words.append(word)
 
-            cortes = ('.', '!', '?', ';')
+            cuts = ('.', '!', '?', ';')
             
-            if any(c in word for c in cortes):
+            if any(c in word for c in cuts):
                 print(f"--- MATCH DETECTADO ---:", word)
-                end_tick = event.audio_offset + event.duration
+                duration_ticks = int(event.duration.total_seconds()* 10_000_000)
+                end_tick = event.audio_offset + duration_ticks
                 self.close_phrase(end_tick)
+        except Exception as e:
+            print('error en evento', e)
                 
     def close_phrase(self, end_tick):
         if not self.current_words:
             return
-        full_text = " ".join(self.current_words).replace(" .", ".").replace(" !", "!").strip()
+
+        full_text = " ".join(self.current_words).strip()
+        print('texto completo:', full_text)
         new_dict = {
             "text": full_text,
             "start": (self.start_tick) // 10000,
             "end": (end_tick)// 10000
         }
         self.timeline.append(new_dict)
-        print(f"--- FRASE CERRADA. Total en timeline: {len(self.timeline)} ---")
-        self.current_words = [] 
+
+        self.current_words.clear()
+        print('suma luego de limpiar: ', len(self.current_words))
         self.start_tick = 0
         print(f"--- FRASE GUARDADA: [{full_text[:15]}...] | Total: {len(self.timeline)}")
 
@@ -77,13 +84,17 @@ def build_audio_timeline(text, key, region):
     audio_config = speechsdk.audio.AudioConfig(filename=temp_path)
     synthesizer= speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_config)
 
+    #callback:
     synthesizer.synthesis_word_boundary.connect(manager.on_word_boundary)
     result = synthesizer.speak_ssml_async(text).get()
-    time.sleep(0.3)
-    total_ticks = int(result.audio_duration.total_seconds() * 10_000_000)
-    timeline = manager.get_final_timeline(total_ticks)
+    if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+        total_ticks = int(result.audio_duration.total_seconds() * 10_000_000)
+        timeline = manager.get_final_timeline(total_ticks)
 
-    return temp_path, timeline
+        return temp_path, timeline
+    else:
+        print(f"Error en síntesis: {result.reason}")
+        return None, []
 
 def build_ssml(segmentos: list):
     ssml = ("<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' "

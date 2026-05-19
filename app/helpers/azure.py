@@ -1,8 +1,9 @@
 import azure.cognitiveservices.speech as speechsdk
+from fastapi import HTTPException
 from app.config import DEFAULT_VOICE
 import unicodedata
 import tempfile
-import os
+import os, httpx
 import time
 
 # def build_ssml(text: str, voice: str) -> str:
@@ -95,17 +96,42 @@ def build_audio_timeline(text, key, region):
     else:
         print(f"Error en síntesis: {result.reason}")
         return None, []
+    
+async def build_audio_apirest(ssml, azure_api_key, service_region):
+        endpoint = f"https://{service_region}.tts.speech.microsoft.com/cognitiveservices/v1"
+    
+        headers = {
+            "Ocp-Apim-Subscription-Key": azure_api_key,
+            "Content-Type": "application/ssml+xml",
+            "X-Microsoft-OutputFormat": "audio-16khz-32kbitrate-mono-mp3",
+            "User-Agent": "fastapi-tts"
+        }
 
-def build_ssml(segmentos: list):
+        print("--- SSML GENERADO ---")
+        print(ssml)
+        print("---------------------")
+        async with httpx.AsyncClient(timeout=None) as client:
+            response = await client.post(endpoint, headers= headers, content=ssml)
+            if response.status_code != 200:
+                print(f"DEBUG AZURE ERROR: {response.text}")
+                raise HTTPException(status_code=response.status_code, detail= response.text)
+        
+        # temp_path = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
+        # temp_path.write(response.content)
+        # temp_path.flush()
+        # temp_path.close()
+        return response.content
+
+def build_ssml(segments: list):
     ssml = ("<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' "
             "xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='es-ES'>"
             )
-    for segmento in segmentos:
-        voice_name = segmento["voice"]
+    for segment in segments:
+        voice_name = segment["voice"]
         if voice_name in ["default", None]:
             voice_name = DEFAULT_VOICE
-        text = segmento["text"]
-        style = segmento["inflection"]
+        text = segment["text"]
+        style = segment["inflection"]
 
         if style != "default":
             block = f'<voice name="{voice_name}"><mstts:express-as style="{style}">{text}</mstts:express-as></voice>'

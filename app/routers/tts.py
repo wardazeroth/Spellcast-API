@@ -7,9 +7,8 @@ from app.models.user import Users, UserSubscription
 from app.interfaces.editor import Node
 from app.integrations.fernet import decrypt_str
 from app.helpers.azure import build_ssml, remove_file, build_audio_timeline, build_audio_apirest
-from app.config import DEFAULT_VOICE
 from app.utils.parser import parser_nodes
-import os, httpx, io, json
+import os, io, json
 
 router = APIRouter(prefix="/tts", tags=["tts"])
 
@@ -20,7 +19,6 @@ async def text_to_speech(body: Node, own_credentials: bool=True, with_timeline: 
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
             
     if user.subscription.plan == 'subscriber' and own_credentials==False:
         azure_api_key =os.getenv("AZURE_API_KEY")
@@ -67,8 +65,5 @@ async def text_to_speech(body: Node, own_credentials: bool=True, with_timeline: 
         headers["X-Timeline"] = json_timeline.encode('utf-8').decode('latin-1')
         headers["Access-Control-Expose-Headers"] = "X-Timeline"
     
-    return StreamingResponse(  
-        iterfile(), media_type='audio/mpeg',
-        headers=headers
-            )
+    return StreamingResponse(iterfile(), media_type='audio/mpeg', headers=headers)
     

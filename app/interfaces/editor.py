@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 class TTAttrs(BaseModel):
     characterId : Optional[str]= None
@@ -19,3 +19,8 @@ class Node(BaseModel):
 class TTSRequest(BaseModel):
     body: Node
     own_credentials: Optional[bool]=False
+
+class Segment(BaseModel):
+    text: str
+    voice: str
+    inflection: str

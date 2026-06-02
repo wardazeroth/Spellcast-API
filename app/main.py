@@ -4,7 +4,8 @@ from middlewares.auth_middleware import authentication
 from app.integrations.redis import init_redis
 from app.integrations.alchemy import SessionLocal, engine
 from app.routers import accounts, user, tts, subscription, storage, document, library
-from app.config import APP_ENV
+from app.config import APP_ENV, ALLOWED_ORIGINS_DEV
+import json
 
 app = FastAPI()
 
@@ -16,7 +17,7 @@ origins = [
 # Check if in development environment
 if APP_ENV == "development":
     # Specific origin for development to allow credentials
-    origins = ["http://localhost:5173"]
+    origins = json.loads(ALLOWED_ORIGINS_DEV)
 
 app.add_middleware(
     CORSMiddleware,

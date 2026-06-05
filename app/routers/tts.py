@@ -62,8 +62,8 @@ async def text_to_speech(body: List[Segment], own_credentials: bool=True, with_t
     headers = {"Content-Disposition": 'attachment; filename="tts.mp3"'}
 
     if with_timeline:
-        json_timeline = json.dumps(timeline, ensure_ascii=False)
-        headers["X-Timeline"] = json_timeline.encode('utf-8').decode('latin-1')
+        json_timeline = json.dumps(timeline, ensure_ascii=True)
+        headers["X-Timeline"] = json_timeline
         headers["Access-Control-Expose-Headers"] = "X-Timeline"
 
     return StreamingResponse(iterfile(), media_type='audio/mpeg', headers=headers)

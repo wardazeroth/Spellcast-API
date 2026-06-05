@@ -42,10 +42,9 @@ async def text_to_speech(body: List[Segment], own_credentials: bool=True, with_t
     segments = [s.dict() for s in body]
 
     if with_timeline:
-        ssml = build_ssml(segments).strip()
         async with _azure_semaphore:
             temp_path, timeline, error, error_status = await run_in_threadpool(
-                build_audio_timeline, ssml, segments, azure_api_key, service_region
+                build_audio_timeline, segments, azure_api_key, service_region
             )
         if not temp_path:
             raise HTTPException(status_code=error_status or 500, detail=error or "Audio synthesis failed")

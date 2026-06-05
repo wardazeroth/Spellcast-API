@@ -4,6 +4,8 @@ from app.config import DEFAULT_VOICE
 import tempfile
 import os, httpx, html
 
+AZURE_VOICE_LIMIT = 50
+
 
 def remove_file(path):
     try:
@@ -11,9 +13,9 @@ def remove_file(path):
     except Exception as e:
         print(e)
 
-def build_audio_timeline(ssml, segments, key, region):
-    # Pre-compute where each segment's escaped text sits in the SSML string.
-    # html.escape must match what build_ssml uses.
+
+def _synthesize_chunk(ssml: str, segments: list, key: str, region: str):
+    """Synthesize one SSML chunk. Returns (temp_path, timeline, error_detail, http_status)."""
     segment_ranges = []
     search_from = 0
     for segment in segments:
@@ -78,23 +80,64 @@ def build_audio_timeline(ssml, segments, key, region):
         })
         prev_end = end
 
-    return temp_path, timeline, None, None
-    
-async def build_audio_apirest(ssml, azure_api_key, service_region):
-        endpoint = f"https://{service_region}.tts.speech.microsoft.com/cognitiveservices/v1"
-    
-        headers = {
-            "Ocp-Apim-Subscription-Key": azure_api_key,
-            "Content-Type": "application/ssml+xml",
-            "X-Microsoft-OutputFormat": "audio-16khz-32kbitrate-mono-mp3",
-            "User-Agent": "fastapi-tts"
-        }
+    chunk_duration_ms = total_ticks // 10000
+    return temp_path, timeline, chunk_duration_ms, None
 
-        async with httpx.AsyncClient(timeout=None) as client:
-            response = await client.post(endpoint, headers= headers, content=ssml)
-            if response.status_code != 200:
-                raise HTTPException(status_code=response.status_code, detail= response.text)
-        return response.content
+
+def build_audio_timeline(segments: list, key: str, region: str):
+    """Synthesize segments in chunks of AZURE_VOICE_LIMIT, concatenate audio and merge timelines."""
+    chunks = [segments[i:i + AZURE_VOICE_LIMIT] for i in range(0, len(segments), AZURE_VOICE_LIMIT)]
+
+    combined_audio = b''
+    combined_timeline = []
+    time_offset_ms = 0
+
+    for chunk in chunks:
+        chunk_ssml = build_ssml(chunk).strip()
+        temp_path, timeline, chunk_duration_ms, error = _synthesize_chunk(chunk_ssml, chunk, key, region)
+
+        if not temp_path:
+            # error is (error_detail, http_status) packed as chunk_duration_ms=error_detail, error=http_status
+            # Actually _synthesize_chunk returns (None, [], error_detail, http_status) on failure
+            # Unpack correctly: temp_path=None, timeline=[], chunk_duration_ms=error_detail, error=http_status
+            return None, [], chunk_duration_ms, error
+
+        with open(temp_path, 'rb') as f:
+            combined_audio += f.read()
+        remove_file(temp_path)
+
+        for entry in timeline:
+            combined_timeline.append({
+                "text": entry["text"],
+                "start": entry["start"] + time_offset_ms,
+                "end": entry["end"] + time_offset_ms,
+            })
+
+        time_offset_ms += chunk_duration_ms
+
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
+    tmp_file.write(combined_audio)
+    tmp_file.close()
+
+    return tmp_file.name, combined_timeline, None, None
+
+
+async def build_audio_apirest(ssml, azure_api_key, service_region):
+    endpoint = f"https://{service_region}.tts.speech.microsoft.com/cognitiveservices/v1"
+
+    headers = {
+        "Ocp-Apim-Subscription-Key": azure_api_key,
+        "Content-Type": "application/ssml+xml",
+        "X-Microsoft-OutputFormat": "audio-16khz-32kbitrate-mono-mp3",
+        "User-Agent": "fastapi-tts"
+    }
+
+    async with httpx.AsyncClient(timeout=None) as client:
+        response = await client.post(endpoint, headers=headers, content=ssml)
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=response.text)
+    return response.content
+
 
 def build_ssml(segments: list):
     ssml = ("<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' "
@@ -116,7 +159,3 @@ def build_ssml(segments: list):
 
     ssml += "</speak>"
     return ssml
-        
-
-
-

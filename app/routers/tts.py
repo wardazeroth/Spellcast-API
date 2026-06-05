@@ -7,10 +7,13 @@ from app.models.user import Users, UserSubscription
 from app.interfaces.editor import Segment
 from app.integrations.fernet import decrypt_str
 from app.helpers.azure import build_ssml, remove_file, build_audio_timeline, build_audio_apirest
-import os, io, json
+import os, io, json, asyncio
 from typing import List
 
 router = APIRouter(prefix="/tts", tags=["tts"])
+
+# Azure Speech SDK is not safe for concurrent use in the same process.
+_azure_semaphore = asyncio.Semaphore(1)
 
 @router.post('/')
 async def text_to_speech(body: List[Segment], own_credentials: bool=True, with_timeline: bool=False, db: Session = Depends(get_db), request: Request=None):
@@ -40,11 +43,12 @@ async def text_to_speech(body: List[Segment], own_credentials: bool=True, with_t
 
     if with_timeline:
         ssml = build_ssml(segments).strip()
-        temp_path, timeline = await run_in_threadpool(
-            build_audio_timeline, ssml, segments, azure_api_key, service_region
-        )
+        async with _azure_semaphore:
+            temp_path, timeline, error, error_status = await run_in_threadpool(
+                build_audio_timeline, ssml, segments, azure_api_key, service_region
+            )
         if not temp_path:
-            raise HTTPException(status_code=500, detail="Audio synthesis failed")
+            raise HTTPException(status_code=error_status or 500, detail=error or "Audio synthesis failed")
         file_stream = open(temp_path, mode='rb')
         def iterfile():
             try:

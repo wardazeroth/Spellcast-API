@@ -2,25 +2,26 @@ import azure.cognitiveservices.speech as speechsdk
 from fastapi import HTTPException
 from app.config import DEFAULT_VOICE
 import tempfile
-import os, httpx
+import os, httpx, html
 
 
 def remove_file(path):
     try:
         os.remove(path)
-    except Exception as e: 
+    except Exception as e:
         print(e)
 
 def build_audio_timeline(ssml, segments, key, region):
-    # Pre-compute where each segment's text sits in the SSML string
+    # Pre-compute where each segment's escaped text sits in the SSML string.
+    # html.escape must match what build_ssml uses.
     segment_ranges = []
     search_from = 0
     for segment in segments:
-        text = segment["text"]
-        pos = ssml.find(text, search_from)
+        safe_text = html.escape(segment["text"])
+        pos = ssml.find(safe_text, search_from)
         if pos != -1:
-            segment_ranges.append((pos, pos + len(text)))
-            search_from = pos + len(text)
+            segment_ranges.append((pos, pos + len(safe_text)))
+            search_from = pos + len(safe_text)
         else:
             segment_ranges.append(None)
 
@@ -50,8 +51,18 @@ def build_audio_timeline(ssml, segments, key, region):
     del synthesizer
 
     if result.reason != speechsdk.ResultReason.SynthesizingAudioCompleted:
+        error_detail = f"Azure synthesis failed: reason={result.reason}"
+        http_status = 500
+        if result.reason == speechsdk.ResultReason.Canceled:
+            details = result.cancellation_details
+            error_detail = f"Azure canceled: {details.reason} — {details.error_details}"
+            detail_str = details.error_details or ""
+            if "429" in detail_str:
+                http_status = 429
+            elif "403" in detail_str or "401" in detail_str:
+                http_status = 403
         remove_file(temp_path)
-        return None, []
+        return None, [], error_detail, http_status
 
     total_ticks = int(result.audio_duration.total_seconds() * 10_000_000)
     timeline = []
@@ -67,7 +78,7 @@ def build_audio_timeline(ssml, segments, key, region):
         })
         prev_end = end
 
-    return temp_path, timeline
+    return temp_path, timeline, None, None
     
 async def build_audio_apirest(ssml, azure_api_key, service_region):
         endpoint = f"https://{service_region}.tts.speech.microsoft.com/cognitiveservices/v1"
@@ -95,10 +106,11 @@ def build_ssml(segments: list):
         text = segment["text"]
         style = segment["inflection"]
 
+        safe_text = html.escape(text)
         if style != "default":
-            block = f'<voice name="{voice_name}"><mstts:express-as style="{style}">{text}</mstts:express-as></voice>'
+            block = f'<voice name="{voice_name}"><mstts:express-as style="{style}">{safe_text}</mstts:express-as></voice>'
         else:
-            block = f'<voice name="{voice_name}">{text}</voice>'
+            block = f'<voice name="{voice_name}">{safe_text}</voice>'
 
         ssml += block
 

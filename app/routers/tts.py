@@ -8,28 +8,30 @@ from app.interfaces.editor import Node
 from app.integrations.fernet import decrypt_str
 from app.helpers.azure import build_ssml, remove_file, build_audio_timeline, build_audio_apirest
 from app.utils.parser import parser_nodes
-import os, io, json
+from app.config import AZURE_API_KEY
+import io, json
 
 router = APIRouter(prefix="/tts", tags=["tts"])
 
 @router.post('/')
 async def text_to_speech(body: Node, own_credentials: bool=True, with_timeline: bool=False, db: Session = Depends(get_db), request: Request=None): 
+    # print('ACAAAAAA')
     user_id = request.state.user.get('id')
     user= db.query(Users).filter(Users.id == user_id).first()
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
             
-    if user.subscription.plan == 'subscriber' and own_credentials==False:
-        azure_api_key =os.getenv("AZURE_API_KEY")
+    if user.subscription.plan == 'subscriber' and not own_credentials:
+        azure_api_key = AZURE_API_KEY
         service_region = "brazilsouth"
-    elif user.subscription.plan == 'subscriber' and own_credentials==True:
+    elif user.subscription.plan == 'subscriber' and own_credentials:
         credentials = db.query(UserSubscription).filter(UserSubscription.user_id == user_id).first().credential
 
         azure_api_key = credentials.azure_key
         service_region = credentials.region
         azure_api_key = decrypt_str(azure_api_key)
-    elif user.subscription.plan == 'freemium' and own_credentials==True:
+    elif user.subscription.plan == 'freemium' and own_credentials:
         credentials = db.query(UserSubscription).filter(UserSubscription.user_id == user_id).first().credential
 
         azure_api_key = credentials.azure_key

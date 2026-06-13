@@ -99,8 +99,6 @@ def build_ssml(segments: list):
             )
     for segment in segments:
         voice_name = segment["voice"]
-        if voice_name in ["default", None]:
-            voice_name = DEFAULT_VOICE
         text = segment["text"]
         style = segment["inflection"]
 

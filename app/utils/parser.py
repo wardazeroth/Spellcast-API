@@ -1,19 +1,20 @@
 from app.interfaces.editor import Node
+from app.config import DEFAULT_VOICE
 
 def parser_nodes(node: Node):
     segments = []
 
     if node.type == 'text':
-        current_voice = 'default'
+        current_voice = DEFAULT_VOICE
         inflection = 'default'
 
         if node.marks:
             for mark in node.marks:
-                if mark.type == 'tts':
-                    current_voice = mark.attrs.voice
-                    inflection = mark.attrs.inflection
+                print('las marcass:', mark)
+                if mark.type == 'tts' and mark.attrs:
+                    current_voice = mark.attrs.voice or DEFAULT_VOICE
+                    inflection = mark.attrs.inflection or 'default'
                     
-
         if node.text:
             node_text = node.text
             segments.append(

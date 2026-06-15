@@ -8,6 +8,7 @@ class TTAttrs(BaseModel):
     inflection: Optional[str] = "default"
 
 class TTSmarks(BaseModel):
+    
     type: str
     attrs: Optional[TTAttrs]=None
     

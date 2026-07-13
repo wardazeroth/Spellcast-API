@@ -1,17 +1,19 @@
 from app.interfaces.editor import Node
+from app.misc.consts import DEFAULT_INFLECTION
+from app.config import DEFAULT_VOICE
 
 def parser_nodes(node: Node):
     segments = []
 
     if node.type == 'text':
-        current_voice = 'default'
-        inflection = 'default'
+        current_voice = DEFAULT_VOICE
+        inflection = DEFAULT_INFLECTION
 
         if node.marks:
             for mark in node.marks:
-                if mark.type == 'tts':
-                    current_voice = mark.attrs.voice
-                    inflection = mark.attrs.inflection
+                if mark.type == 'tts' and mark.attrs:
+                    current_voice = mark.attrs.voice or DEFAULT_VOICE
+                    inflection = mark.attrs.inflection or DEFAULT_INFLECTION
                     
 
         if node.text:

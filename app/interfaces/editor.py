@@ -2,19 +2,22 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 class TTAttrs(BaseModel):
-    characterId : Optional[str]= None
-    voice: str = "default"
-    inflection: str = "default"
+    characterId: Optional[str] = None
+    characterName: Optional[str] = None
+    voice: Optional[str] = "default"
+    inflection: Optional[str] = "default"
 
 class TTSmarks(BaseModel):
     type: str
-    attrs: Optional[TTAttrs]=None
+    attrs: Optional[TTAttrs] = None
 
 class Node(BaseModel):
     type: str
-    text: Optional[str]=None
-    marks: Optional[list[TTSmarks]]=None
-    content: Optional[list["Node"]]=None
+    text: Optional[str] = None
+    marks: Optional[List[TTSmarks]] = None
+    content: Optional[List["Node"]] = None
+
+Node.model_rebuild()
 
 class TTSRequest(BaseModel):
     body: Node

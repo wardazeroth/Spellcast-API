@@ -15,36 +15,33 @@ router = APIRouter(prefix="/tts", tags=["tts"])
 
 @router.post('/')
 async def text_to_speech(body: Node, own_credentials: bool=True, with_timeline: bool=False, db: Session = Depends(get_db), request: Request=None): 
-    # print('ACAAAAAA')
     user_id = request.state.user.get('id')
     user= db.query(Users).filter(Users.id == user_id).first()
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-            
+        
     if user.subscription.plan == 'subscriber' and not own_credentials:
-        azure_api_key = AZURE_API_KEY
+        api_key = AZURE_API_KEY
         service_region = "brazilsouth"
     elif user.subscription.plan == 'subscriber' and own_credentials:
         credentials = db.query(UserSubscription).filter(UserSubscription.user_id == user_id).first().credential
-
-        azure_api_key = credentials.azure_key
-        service_region = credentials.region
-        azure_api_key = decrypt_str(azure_api_key)
+        config_dict = json.loads(decrypt_str(credentials.config))
+        if credentials.provider_type == 'azure':
+            api_key = config_dict.get('apiKey')
+            service_region = config_dict.get('region')
     elif user.subscription.plan == 'freemium' and own_credentials:
         credentials = db.query(UserSubscription).filter(UserSubscription.user_id == user_id).first().credential
-
-        azure_api_key = credentials.azure_key
-        service_region = credentials.region
-        azure_api_key = decrypt_str(azure_api_key)
+        if credentials.provider_type == 'azure':
+            api_key = config_dict.get('apiKey')
+            service_region = config_dict.get('region')
     else:
         raise HTTPException(status_code=403, detail="Process error. Please contact support.")
-
 
     segments = parser_nodes(body)
     if with_timeline:
         ssml = build_ssml(segments).strip()
-        temp_path, timeline= await run_in_threadpool(build_audio_timeline, text=ssml, key=azure_api_key, region=service_region)
+        temp_path, timeline= await run_in_threadpool(build_audio_timeline, text=ssml, key=api_key, region=service_region)
         file_stream = open(temp_path, mode='rb')
         def iterfile():
             try:
@@ -54,7 +51,7 @@ async def text_to_speech(body: Node, own_credentials: bool=True, with_timeline: 
                 remove_file(temp_path)
     else:
         ssml = build_ssml(segments)
-        audio_bytes = await build_audio_apirest(ssml=ssml, azure_api_key=azure_api_key, service_region=service_region)
+        audio_bytes = await build_audio_apirest(ssml=ssml, azure_api_key=api_key, service_region=service_region)
         file_stream = io.BytesIO(audio_bytes)
 
         def iterfile():

@@ -16,14 +16,15 @@ class Users(Base):
     )
 
 # New models in spellcast schema
-class AzureCredentials(Base):
-    __tablename__ = "azure_credentials"
+class Credential(Base):
+    __tablename__ = "credential"
     __table_args__ = {"schema": "spellcast"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(String, nullable=False)
-    azure_key = Column(Text, nullable=False)    
-    region = Column(String, nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("accounts.users.id"), nullable=False)
+    config = Column(Text, nullable=False)
+    provider_type = Column(String, nullable=False, default='azure')
+    is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     voices = Column(JSONB, nullable=False, server_default='[]')
     shared = Column(Boolean, default=False)
@@ -35,9 +36,9 @@ class UserSubscription(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("accounts.users.id"), unique=True, nullable=False)
     plan = Column(String, nullable=False)
-    current_credential= Column("current_credential", UUID(as_uuid=True), ForeignKey("spellcast.azure_credentials.id"), nullable=True)
+    current_credential= Column("current_credential", UUID(as_uuid=True), ForeignKey("spellcast.credential.id"), nullable=True)
     
-    credential = relationship("AzureCredentials", uselist=False)
+    credential = relationship("Credential", uselist=False)
     user = relationship("Users", uselist=False)
 
 # Bidirectional relationship from Users to UserSubscription

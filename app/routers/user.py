@@ -6,8 +6,9 @@ from app.integrations.fernet import encrypt_str, decrypt_str
 from app.integrations.alchemy import get_db
 from app.interfaces.credentials import CredentialsCreate, CredentialsUpdate, validate_provider_config
 from app.services.azure import validate_key, get_voices_list
+from app.services.aws import validate_aws_key
 from app.utils.mask import mask
-from app.misc.consts import VALID_REGIONS
+from app.misc.consts import AZURE_VALID_REGIONS, AWS_VALID_REGIONS
 import json
 
 router = APIRouter(prefix="/user", tags=["User"])
@@ -26,7 +27,7 @@ async def create_credentials(request: Request, data: CredentialsCreate, db: Sess
         api_key = valid_config["apiKey"]
         region = valid_config["region"]
 
-        if region not in VALID_REGIONS:
+        if region not in AZURE_VALID_REGIONS:
             raise HTTPException(
                 status_code=422, detail="Invalid region. Please provide a valid Azure region.")
         try:
@@ -35,8 +36,20 @@ async def create_credentials(request: Request, data: CredentialsCreate, db: Sess
             print('Error validating Azure key:', e.detail)
             raise HTTPException(
                 status_code=422, detail="Invalid Azure key or region. Please provide valid credentials.")
+
     elif data.provider_type == 'aws':
-        pass
+        access_key_id = valid_config["accessKeyId"]
+        secret_access_key = valid_config["secretAccessKey"]
+        region = valid_config["region"]
+
+        if region not in AWS_VALID_REGIONS:
+            raise HTTPException(
+                status_code=422, detail="Invalid region. Please provide a valid AWS region.")
+        try:
+            await validate_aws_key(access_key_id, secret_access_key, region, sessionToken=None)
+        except HTTPException as e:
+            print('Error validating key:', e.detail)
+            raise HTTPException(status_code= 422, detail="Invalid AWS key or region. Please provide valid credentials.")
     else:
         pass
 
@@ -81,8 +94,10 @@ async def get_credentials(request: Request, db: Session = Depends(get_db)):
             raw_key = config_dict.get("privateKey", "")
             config_dict["privateKey"] = mask(raw_key)
         elif cred.provider_type == 'aws':
-            raw_key = config_dict.get("secretAccessKey", "")
-            config_dict["secretAccessKey"] = mask(raw_key)
+            raw_access_key = config_dict.get("accessKeyId")
+            config_dict["accessKeyId"] = mask(raw_access_key)
+            raw_secret_key = config_dict.get("secretAccessKey", "")
+            config_dict["secretAccessKey"] = mask(raw_secret_key)
 
         response.append({
             "id": cred.id,

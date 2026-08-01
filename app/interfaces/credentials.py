@@ -15,6 +15,8 @@ class AWSConfigSchema(BaseModel):
     accessKeyId: str
     secretAccessKey: str
     region: str
+    #Optional-> for student account
+    sessionToken: Optional[str] = None
 
 class CredentialsUpdate(BaseModel):
     provider_type: Optional[Literal['azure', 'gcp', 'aws', 'custom']] = None

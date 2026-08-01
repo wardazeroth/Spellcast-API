@@ -8,7 +8,6 @@ class TTAttrs(BaseModel):
     inflection: Optional[str] = "default"
 
 class TTSmarks(BaseModel):
-    
     type: str
     attrs: Optional[TTAttrs]=None
     
@@ -23,3 +22,8 @@ Node.model_rebuild()
 class TTSRequest(BaseModel):
     body: Node
     own_credentials: Optional[bool]=False
+
+class SimpleTTSRequest(BaseModel):
+    text: str
+    voice: Optional[str] = "es-CL-LorenzoNeural"
+    inflection: Optional[str] = "default"

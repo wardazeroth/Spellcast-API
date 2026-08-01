@@ -25,5 +25,5 @@ class TTSRequest(BaseModel):
 
 class SimpleTTSRequest(BaseModel):
     text: str
-    voice: Optional[str] = "es-CL-LorenzoNeural"
+    voice: Optional[str] = None
     inflection: Optional[str] = "default"

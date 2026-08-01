@@ -1,6 +1,6 @@
 import boto3
 
-async def build_aws_audio(segments, ssml, accessKeyId, secretAccessKey, region):
+async def build_aws_audio(voiceId, ssml, accessKeyId, secretAccessKey, region):
     client = boto3.client(
     'polly',
     aws_access_key_id=accessKeyId,
@@ -12,13 +12,13 @@ async def build_aws_audio(segments, ssml, accessKeyId, secretAccessKey, region):
         OutputFormat='mp3',
         SampleRate='8000',
         Text=ssml,
-        TextType='text',
-        VoiceId=segments['voice']
+        TextType='ssml',
+        VoiceId=voiceId
     )
 
-    return response['AudioStream'].read()   
+    return response['AudioStream'].read()
 
-def build_aws_ssml(segments: list):
+def build_aws_ssml(segments: list) -> str:
     ssml = ("<speak>")
     for segment in segments:
         text = segment['text']

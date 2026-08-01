@@ -13,7 +13,8 @@ async def aws_timeline_builder(segments, accessKeyId, secretAccessKey, region):
 
 async def aws_ssml_build(segments, aws_access_key_id, aws_secret_access_key, region):
     ssml = build_aws_ssml(segments)
-    audio_bytes = await build_aws_audio(segments, ssml=ssml, accessKeyId=aws_access_key_id, secretAccessKey=aws_secret_access_key, region=region)
+    voice_id=segments[0]['voice']
+    audio_bytes = await build_aws_audio(voiceId = voice_id, ssml=ssml, accessKeyId=aws_access_key_id, secretAccessKey=aws_secret_access_key, region=region)
     file_stream = io.BytesIO(audio_bytes)
 
     def iterfile():

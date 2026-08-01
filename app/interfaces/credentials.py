@@ -20,9 +20,10 @@ class AWSConfigSchema(BaseModel):
 
 class CredentialsUpdate(BaseModel):
     provider_type: Optional[Literal['azure', 'gcp', 'aws', 'custom']] = None
-    config: Optional[Dict[str, Any]]
+    config: Optional[Dict[str, Any]] = None
     voices: Optional[List[Any]] = None
     shared: Optional[bool] = None
+    is_active: Optional[bool] = None
     
 class CredentialsCreate(BaseModel):
     provider_type: Literal['azure', 'gcp', 'aws', 'custom'] = 'azure'

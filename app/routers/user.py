@@ -56,6 +56,8 @@ async def create_credentials(request: Request, data: CredentialsCreate, db: Sess
     json_config_str = json.dumps(valid_config)
     encrypted_config = encrypt_str(json_config_str)
 
+    db.query(Credential).filter(Credential.user_id== user_id).update({'is_active': False})
+
     new_credentials = Credential(
         user_id=user.id,
         provider_type = data.provider_type,
@@ -156,21 +158,26 @@ async def update_credentials(request: Request, data: CredentialsUpdate, db: Sess
     credential = db.query(Credential).filter(
         Credential.id == id, Credential.user_id == user_id).first()
 
-    current_config = json.loads(decrypt_str(credential.config))
-
     try:
-        current_config.update(data.config)
-        #Validar estructura nueva con pydantic
-        current_config = validate_provider_config(credential.provider_type, current_config)
+        if data.config is not None:
+            current_config = json.loads(decrypt_str(credential.config))
+            current_config.update(data.config)
+            #Validar estructura nueva con pydantic
+            current_config = validate_provider_config(credential.provider_type, current_config)
 
-        if credential.provider_type == 'azure':
-            if current_config.get("region") not in VALID_REGIONS:
-                raise HTTPException(
-                    status_code=422, detail="Invalid region. Please provide a valid Azure region.")
-            await validate_key(current_config["region"], current_config["apiKey"])
+            if credential.provider_type == 'azure':
+                if current_config.get("region") not in AZURE_VALID_REGIONS:
+                    raise HTTPException(
+                        status_code=422, detail="Invalid region. Please provide a valid Azure region.")
+                await validate_key(current_config["region"], current_config["apiKey"])
 
-        credential.config = encrypt_str(json.dumps(current_config))
+            credential.config = encrypt_str(json.dumps(current_config))
 
+        if data.is_active == True:
+            db.query(Credential).filter(Credential.user_id== user_id).update({'is_active': False})
+            db.expire_all()
+            credential.is_active = data.is_active
+        
         if data.voices is not None:
             credential.voices = data.voices
 
@@ -192,15 +199,18 @@ async def update_credentials(request: Request, data: CredentialsUpdate, db: Sess
                 raw_key = config_dict.get("privateKey", "")
                 config_dict["privateKey"] = mask(raw_key)
             elif cred.provider_type == 'aws':
-                raw_key = config_dict.get("secretAccessKey", "")
-                config_dict["secretAccessKey"] = mask(raw_key)
+                raw_access_key = config_dict.get("accessKeyId","")
+                config_dict["accessKeyId"] = mask(raw_access_key)
+                raw_secret_key = config_dict.get("secretAccessKey", "")
+                config_dict["secretAccessKey"] = mask(raw_secret_key)
 
             response.append({
                 "id": cred.id,
                 "provider_type": cred.provider_type,
                 "config": config_dict,
                 "voices": cred.voices,
-                "shared": cred.shared
+                "shared": cred.shared,
+                "is_active": cred.is_active
             })
         return {"message": "Updated successfully", "credentials": response}
     

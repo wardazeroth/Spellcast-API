@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
-from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from app.integrations.alchemy import get_db
-from app.models.user import Users, UserSubscription
+from app.models.user import Users, UserSubscription, Credential
 from app.interfaces.editor import Node, SimpleTTSRequest, TTSmarks, TTAttrs
 from app.integrations.fernet import decrypt_str
 from app.helpers.builder_azure import timeline_builder, ssml_build
 from app.helpers.builder_aws import aws_ssml_build
 from app.utils.parser import parser_nodes
 from app.config import AZURE_API_KEY
+from app.misc.consts import DEFAULT_VOICES
 from typing import Union
 import io, json
 
@@ -26,13 +26,14 @@ async def text_to_speech(body: Union[Node, SimpleTTSRequest], own_credentials: b
         api_key = AZURE_API_KEY
         service_region = "brazilsouth"
     elif user.subscription.plan == 'subscriber' and own_credentials:
-        credentials = db.query(UserSubscription).filter(UserSubscription.user_id == user_id).first().credential
+        credentials = db.query(Credential).filter(Credential.user_id==user_id, Credential.is_active==True).first()
         config_dict = json.loads(decrypt_str(credentials.config))
 
         if credentials.provider_type == 'azure':
             api_key = config_dict.get('apiKey')
             service_region = config_dict.get('region')
 
+            selected_voice = body.voice if body.voice is not None else DEFAULT_VOICES.get(credentials.provider_type)
             if isinstance(body, SimpleTTSRequest):
                 node_tree = Node(
                     type="text",
@@ -40,7 +41,7 @@ async def text_to_speech(body: Union[Node, SimpleTTSRequest], own_credentials: b
                     marks=[
                         TTSmarks(
                             type="tts",
-                            attrs=TTAttrs(voice=body.voice, inflection=body.inflection)
+                            attrs=TTAttrs(voice=selected_voice, inflection=body.inflection)
                         )
                     ]
                 )
@@ -54,10 +55,11 @@ async def text_to_speech(body: Union[Node, SimpleTTSRequest], own_credentials: b
                 return await ssml_build(segments, api_key, service_region)
 
         elif credentials.provider_type == 'aws':
-            access_api_key = config_dict('accessKeyId')
-            secret_access_key = config_dict('secretAccessKey')
-            region = config_dict('region')
+            access_api_key = config_dict.get('accessKeyId')
+            secret_access_key = config_dict.get('secretAccessKey')
+            region = config_dict.get('region')
 
+            selected_voice = body.voice if body.voice is not None else DEFAULT_VOICES.get(credentials.provider_type)
             if isinstance(body, SimpleTTSRequest):
                 node_tree = Node(
                     type="text",
@@ -65,7 +67,7 @@ async def text_to_speech(body: Union[Node, SimpleTTSRequest], own_credentials: b
                     marks=[
                         TTSmarks(
                             type="tts",
-                            attrs=TTAttrs(voice=body.voice, inflection=body.inflection)
+                            attrs=TTAttrs(voice=selected_voice, inflection=body.inflection)
                         )
                     ]
                 )

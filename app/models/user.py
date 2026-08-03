@@ -37,7 +37,6 @@ class UserSubscription(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("accounts.users.id"), unique=True, nullable=False)
     plan = Column(String, nullable=False)
     current_credential= Column("current_credential", UUID(as_uuid=True), ForeignKey("spellcast.credential.id"), nullable=True)
-    
     credential = relationship("Credential", uselist=False)
     user = relationship("Users", uselist=False)
 

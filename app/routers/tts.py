@@ -5,7 +5,7 @@ from app.models.user import Users, UserSubscription, Credential
 from app.interfaces.editor import Node, SimpleTTSRequest, TTSmarks, TTAttrs
 from app.integrations.fernet import decrypt_str
 from app.helpers.builder_azure import timeline_builder, ssml_build
-from app.helpers.builder_aws import aws_ssml_build
+from app.helpers.builder_aws import aws_ssml_build, aws_timeline_builder
 from app.utils.parser import parser_nodes
 from app.config import AZURE_API_KEY
 from app.misc.consts import DEFAULT_VOICES
@@ -26,59 +26,34 @@ async def text_to_speech(body: Union[Node, SimpleTTSRequest], own_credentials: b
         api_key = AZURE_API_KEY
         service_region = "brazilsouth"
     elif user.subscription.plan == 'subscriber' and own_credentials:
-        credentials = db.query(Credential).filter(Credential.user_id==user_id, Credential.is_active==True).first()
+        credentials = db.query(Credential).join(UserSubscription, UserSubscription.current_credential==Credential.id).filter(UserSubscription.user_id==user_id).first()
         config_dict = json.loads(decrypt_str(credentials.config))
 
-        if credentials.provider_type == 'azure':
+        provider = credentials.provider_type
+
+        if provider == 'azure':
             api_key = config_dict.get('apiKey')
             service_region = config_dict.get('region')
 
-            selected_voice = body.voice if body.voice is not None else DEFAULT_VOICES.get(credentials.provider_type)
-            if isinstance(body, SimpleTTSRequest):
-                node_tree = Node(
-                    type="text",
-                    text=body.text,
-                    marks=[
-                        TTSmarks(
-                            type="tts",
-                            attrs=TTAttrs(voice=selected_voice, inflection=body.inflection)
-                        )
-                    ]
-                )
-            else:
-                node_tree = body
-
+            node_tree = body_type_request(body, provider)
             segments = parser_nodes(node_tree)
             if with_timeline:
                 return await timeline_builder(segments, api_key, service_region)
             else:
                 return await ssml_build(segments, api_key, service_region)
 
-        elif credentials.provider_type == 'aws':
+        elif provider == 'aws':
             access_api_key = config_dict.get('accessKeyId')
             secret_access_key = config_dict.get('secretAccessKey')
             region = config_dict.get('region')
 
-            selected_voice = body.voice if body.voice is not None else DEFAULT_VOICES.get(credentials.provider_type)
-            if isinstance(body, SimpleTTSRequest):
-                node_tree = Node(
-                    type="text",
-                    text=body.text,
-                    marks=[
-                        TTSmarks(
-                            type="tts",
-                            attrs=TTAttrs(voice=selected_voice, inflection=body.inflection)
-                        )
-                    ]
-                )
-            else:
-                node_tree = body
-
+            node_tree = body_type_request(body, provider)
             segments = parser_nodes(node_tree)
+            voice_id=segments[0]['voice']
             if with_timeline:
-                pass
+                return await aws_timeline_builder(segments, access_api_key, secret_access_key, region)
             else:
-                return await aws_ssml_build(segments, access_api_key, secret_access_key, region)
+                return await aws_ssml_build(voice_id, segments, access_api_key, secret_access_key, region)
 
     elif user.subscription.plan == 'freemium' and own_credentials:
         credentials = db.query(UserSubscription).filter(UserSubscription.user_id == user_id).first().credential
@@ -87,12 +62,26 @@ async def text_to_speech(body: Union[Node, SimpleTTSRequest], own_credentials: b
             service_region = config_dict.get('region')
         
         elif credentials.provider_type == 'aws':
-            access_api_key = config_dict('accessKeyId')
-            secret_access_key = config_dict('secretAccessKey')
-            region = config_dict('region')
+            access_api_key = config_dict.get('accessKeyId')
+            secret_access_key = config_dict.get('secretAccessKey')
+            region = config_dict.get('region')
     else:
         raise HTTPException(status_code=403, detail="Process error. Please contact support.")
-    
 
-
-    
+def body_type_request(body, provider):
+    if isinstance(body, SimpleTTSRequest):
+        selected_voice = body.voice if body.voice is not None else DEFAULT_VOICES.get(provider)
+        node_tree = Node(
+            type="text",
+            text=body.text,
+            marks=[
+                TTSmarks(
+                    type="tts",
+                    attrs=TTAttrs(voice=selected_voice, inflection=body.inflection)
+                )
+            ]
+        )
+    else:
+        node_tree = body
+    return node_tree
+            

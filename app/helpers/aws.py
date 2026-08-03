@@ -1,6 +1,9 @@
 import boto3
 
-async def build_aws_audio(voiceId, ssml, accessKeyId, secretAccessKey, region):
+def build_aws_timeline(accessKeyId, secretAccessKey, region):
+    pass
+
+def build_aws_audio(voiceId, ssml, accessKeyId, secretAccessKey, region):
     client = boto3.client(
     'polly',
     aws_access_key_id=accessKeyId,
@@ -30,5 +33,6 @@ def build_aws_ssml(segments: list) -> str:
     ssml += '</speak>'
 
     return ssml
+
 
         

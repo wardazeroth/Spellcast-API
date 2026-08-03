@@ -56,12 +56,10 @@ async def create_credentials(request: Request, data: CredentialsCreate, db: Sess
     json_config_str = json.dumps(valid_config)
     encrypted_config = encrypt_str(json_config_str)
 
-    db.query(Credential).filter(Credential.user_id== user_id).update({'is_active': False})
-
     new_credentials = Credential(
         user_id=user.id,
         provider_type = data.provider_type,
-        config = encrypted_config,
+        config = encrypted_config,  
         shared = data.shared
     )
 
@@ -69,8 +67,6 @@ async def create_credentials(request: Request, data: CredentialsCreate, db: Sess
     db.commit()
     db.refresh(new_credentials)
     return {"message": "Credentials created successfully"}
-
-
 
 @router.get('/credentials')
 async def get_credentials(request: Request, db: Session = Depends(get_db)):
@@ -106,7 +102,8 @@ async def get_credentials(request: Request, db: Session = Depends(get_db)):
             "provider_type": cred.provider_type,
             "config": config_dict,
             "voices": cred.voices,
-            "shared": cred.shared
+            "shared": cred.shared,
+            "is_active": cred.is_active
         })
 
     return response
@@ -155,6 +152,7 @@ async def update_credentials(request: Request, data: CredentialsUpdate, db: Sess
         raise HTTPException(status_code=404, detail="User not found")
 
     id = request.path_params['id']
+
     credential = db.query(Credential).filter(
         Credential.id == id, Credential.user_id == user_id).first()
 
@@ -173,10 +171,10 @@ async def update_credentials(request: Request, data: CredentialsUpdate, db: Sess
 
             credential.config = encrypt_str(json.dumps(current_config))
 
-        if data.is_active == True:
-            db.query(Credential).filter(Credential.user_id== user_id).update({'is_active': False})
-            db.expire_all()
-            credential.is_active = data.is_active
+        # if data.is_active == True:
+        #     db.query(Credential).filter(Credential.user_id== user_id).update({'is_active': False})
+        #     db.expire_all()
+        #     credential.is_active = data.is_active
         
         if data.voices is not None:
             credential.voices = data.voices

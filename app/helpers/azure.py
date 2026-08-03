@@ -1,6 +1,6 @@
 import azure.cognitiveservices.speech as speechsdk
 from fastapi import HTTPException
-from app.config import DEFAULT_VOICE
+from app.config import AZURE_DEFAULT_VOICE
 import tempfile
 import os, httpx
 
@@ -112,7 +112,6 @@ def build_ssml(segments: list):
     ssml+= "</speak>"
 
     return ssml
-        
 
 
 

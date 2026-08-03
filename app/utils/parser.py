@@ -1,18 +1,18 @@
 from app.interfaces.editor import Node
 from app.misc.consts import DEFAULT_INFLECTION
-from app.config import DEFAULT_VOICE
+from app.config import AZURE_DEFAULT_VOICE
 
 def parser_nodes(node: Node):
     segments = []
 
     if node.type == 'text':
-        current_voice = DEFAULT_VOICE
+        current_voice = AZURE_DEFAULT_VOICE
         inflection = DEFAULT_INFLECTION
 
         if node.marks:
             for mark in node.marks:
                 if mark.type == 'tts' and mark.attrs:
-                    current_voice = mark.attrs.voice or DEFAULT_VOICE
+                    current_voice = mark.attrs.voice or AZURE_DEFAULT_VOICE
                     inflection = mark.attrs.inflection or DEFAULT_INFLECTION
                     
         if node.text:

@@ -132,12 +132,15 @@ async def get_credentials(request: Request, reveal: bool = Query(False), db: Ses
             raw_key = config_dict.get("privateKey", "")
             config_dict["privateKey"] = mask(raw_key)
         elif credential.provider_type == 'aws':
-            raw_key = config_dict.get("secretAccessKey", "")
-            config_dict["secretAccessKey"] = mask(raw_key)
+            raw_access_key = config_dict.get("accessKeyId", "")
+            config_dict["accessKeyId"] = mask(raw_access_key)
+            raw_secret_key = config_dict.get("secretAccessKey", "")
+            config_dict["secretAccessKey"] = mask(raw_secret_key)
 
     credential = {
         "id": credential.id,
         "provider_type": credential.provider_type,
+        "config": config_dict,
         "voices": credential.voices,
         "shared": credential.shared
     }
@@ -170,11 +173,6 @@ async def update_credentials(request: Request, data: CredentialsUpdate, db: Sess
                 await validate_key(current_config["region"], current_config["apiKey"])
 
             credential.config = encrypt_str(json.dumps(current_config))
-
-        # if data.is_active == True:
-        #     db.query(Credential).filter(Credential.user_id== user_id).update({'is_active': False})
-        #     db.expire_all()
-        #     credential.is_active = data.is_active
         
         if data.voices is not None:
             credential.voices = data.voices

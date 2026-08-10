@@ -4,7 +4,7 @@ from app.config import AZURE_DEFAULT_VOICE
 import tempfile
 import os, httpx
 
-class TimelineManager:
+class AzureTimelineManager:
     def __init__(self):
         self.timeline = []
         self.current_words = []
@@ -56,7 +56,7 @@ def remove_file(path):
         print(e)
 
 def build_audio_timeline(text, key, region):
-    manager = TimelineManager()
+    manager = AzureTimelineManager()
 
     tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
     temp_path = tmp_file.name

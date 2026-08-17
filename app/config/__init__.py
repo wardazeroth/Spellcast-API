@@ -12,9 +12,6 @@ AZURE_URL = os.getenv("AZURE_URL")
 AZURE_API_KEY = os.getenv("AZURE_API_KEY")
 APP_ENV = os.getenv("APP_ENV")
 ID = os.getenv("ID")
-# Kept for main's azure.py / parser.py which still reference DEFAULT_VOICE, alongside the
-# per-provider defaults introduced by the credential refactor (consts.py DEFAULT_VOICES).
-DEFAULT_VOICE = os.getenv("DEFAULT_VOICE")
 AZURE_DEFAULT_VOICE = os.getenv("AZURE_DEFAULT_VOICE")
 AWS_DEFAULT_VOICE = os.getenv("AWS_DEFAULT_VOICE")
 GCP_DEFAULT_VOICE = os.getenv("GCP_DEFAULT_VOICE")

@@ -9,3 +9,21 @@ DEFAULT_VOICES = {
     'aws': AWS_DEFAULT_VOICE,
     'gcp': GCP_DEFAULT_VOICE
 }
+
+SUPPORTED_INFLECTIONS = [
+    'cheerful',
+    'sad',
+    'whispering',
+    'excited',
+    'calm',
+    'angry',
+    'friendly',
+    'fearful',
+    'hopeful',
+    'unfriendly',
+    'shouting',
+    'terrified',
+    'fast',
+    'slow',
+    'emphasis'
+]

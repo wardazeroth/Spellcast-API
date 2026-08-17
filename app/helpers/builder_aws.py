@@ -6,7 +6,6 @@ from fastapi.responses import StreamingResponse
 import io, json
 import tempfile
 
-
 async def aws_timeline_builder(segments, voice_id, accessKeyId, secretAccessKey, region):
     ssml = build_aws_ssml(segments).strip()
     audio_bytes = await run_in_threadpool(build_aws_audio, voiceId=voice_id, ssml=ssml, accessKeyId=accessKeyId, secretAccessKey=secretAccessKey, region=region)

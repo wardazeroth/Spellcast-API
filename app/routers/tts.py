@@ -36,7 +36,6 @@ async def text_to_speech(body: Union[Node, SimpleTTSRequest], own_credentials: b
         provider = credentials.provider_type
         if provider == 'azure':
             return await azure_synthesis(config_dict, provider, body, with_timeline)
-
         elif provider == 'aws':
             return await aws_synthesis(config_dict, provider, body, with_timeline)
 
@@ -74,7 +73,7 @@ async def azure_synthesis(config_dict, provider, body, with_timeline):
     service_region = config_dict.get('region')
 
     node_tree = body_type_request(body, provider)
-    segments = parser_nodes(node_tree)
+    segments = parser_nodes(node_tree, provider)
     if with_timeline:
         return await azure_time_builder(segments, api_key, service_region)
     else:
@@ -86,7 +85,7 @@ async def aws_synthesis(config_dict, provider, body, with_timeline):
     region = config_dict.get('region')
 
     node_tree = body_type_request(body, provider)
-    segments = parser_nodes(node_tree)
+    segments = parser_nodes(node_tree, provider)
     voice_id=segments[0]['voice']
     if with_timeline:
         return await aws_timeline_builder(segments, voice_id, access_api_key, secret_access_key, region)

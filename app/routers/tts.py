@@ -18,17 +18,25 @@ router = APIRouter(prefix="/tts", tags=["tts"])
 def body_type_request(body, provider):
     """Normalize either request shape into a single-node Node tree so parser_nodes() always
     has one contract to walk. SimpleTTSRequest has no marks of its own, so its voice/inflection
-    become the synthetic node's single 'tts' mark — falling back to the provider's default
-    voice (resolved here, not client-side) when the caller didn't request one."""
+    become the synthetic text node's single 'tts' mark — falling back to the provider's default
+    voice (resolved here, not client-side) when the caller didn't request one. Wrapped in a
+    paragraph, not a bare text node: parser_nodes() only splits sentences at the
+    paragraph/heading level (see app/utils/parser.py), so a root-level text node would never
+    be walked at all."""
     if isinstance(body, SimpleTTSRequest):
         selected_voice = body.voice if body.voice is not None else DEFAULT_VOICES.get(provider)
         return Node(
-            type="text",
-            text=body.text,
-            marks=[
-                TTSmarks(
-                    type="tts",
-                    attrs=TTAttrs(voice=selected_voice, inflection=body.inflection)
+            type="paragraph",
+            content=[
+                Node(
+                    type="text",
+                    text=body.text,
+                    marks=[
+                        TTSmarks(
+                            type="tts",
+                            attrs=TTAttrs(voice=selected_voice, inflection=body.inflection)
+                        )
+                    ]
                 )
             ]
         )

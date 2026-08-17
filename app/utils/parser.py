@@ -1,5 +1,17 @@
+import re
 from app.interfaces.editor import Node
 from app.misc.consts import DEFAULT_INFLECTION, DEFAULT_VOICES
+
+# Mirrors the frontend's old client-side split (services/tts.ts's pre-TCORE-77 buildSegments):
+# split after a sentence-ending punctuation mark that isn't itself followed by another dot
+# (so ellipses "..." don't get sliced mid-way). Splitting here — inside each text node, after
+# marks are resolved — instead of once per whole node keeps AI-voice timeline entries at
+# sentence granularity, matching what the browser-voice `sentences` array and the reader's own
+# highlighting already assume; a single unmarked text node otherwise spans a whole paragraph.
+_SENTENCE_SPLIT = re.compile(r'(?<=[.!?])(?!\s*\.)')
+
+def split_sentences(text: str):
+    return [s.strip() for s in _SENTENCE_SPLIT.split(text) if s.strip()]
 
 def parser_nodes(node: Node, provider: str):
     segments = []
@@ -20,14 +32,14 @@ def parser_nodes(node: Node, provider: str):
                     inflection = mark.attrs.inflection or DEFAULT_INFLECTION
 
         if node.text:
-            node_text = node.text
-            segments.append(
-                {
-                    "text": node_text,
-                    "voice": current_voice,
-                    "inflection": inflection
-                }
-            )
+            for sentence in split_sentences(node.text):
+                segments.append(
+                    {
+                        "text": sentence,
+                        "voice": current_voice,
+                        "inflection": inflection
+                    }
+                )
 
     if node.content:
         for child in node.content:

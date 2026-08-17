@@ -23,7 +23,7 @@ class TTSRequest(BaseModel):
     body: Node
     own_credentials: Optional[bool]=False
 
-class Segment(BaseModel):
+class SimpleTTSRequest(BaseModel):
     text: str
-    voice: str
-    inflection: str
+    voice: Optional[str] = None
+    inflection: Optional[str] = "default"

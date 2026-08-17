@@ -1,72 +1,98 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
-from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.integrations.alchemy import get_db
-from app.models.user import Users, UserSubscription
-from app.interfaces.editor import Segment
+from app.models.user import Users, UserSubscription, Credential
+from app.interfaces.editor import Node, SimpleTTSRequest, TTSmarks, TTAttrs
 from app.integrations.fernet import decrypt_str
-from app.helpers.azure import build_ssml, remove_file, build_audio_timeline, build_audio_apirest
-import os, io, json, asyncio
-from typing import List
+from app.helpers.builder_azure import azure_time_builder, azure_ssml_build
+from app.helpers.builder_aws import aws_ssml_build, aws_timeline_builder
+from app.utils.parser import parser_nodes
+from app.config import AZURE_API_KEY
+from app.misc.consts import DEFAULT_VOICES
+from typing import Union
+import json
 
 router = APIRouter(prefix="/tts", tags=["tts"])
 
-# Azure Speech SDK is not safe for concurrent use in the same process.
-_azure_semaphore = asyncio.Semaphore(1)
+
+def body_type_request(body, provider):
+    """Normalize either request shape into a single-node Node tree so parser_nodes() always
+    has one contract to walk. SimpleTTSRequest has no marks of its own, so its voice/inflection
+    become the synthetic node's single 'tts' mark — falling back to the provider's default
+    voice (resolved here, not client-side) when the caller didn't request one."""
+    if isinstance(body, SimpleTTSRequest):
+        selected_voice = body.voice if body.voice is not None else DEFAULT_VOICES.get(provider)
+        return Node(
+            type="text",
+            text=body.text,
+            marks=[
+                TTSmarks(
+                    type="tts",
+                    attrs=TTAttrs(voice=selected_voice, inflection=body.inflection)
+                )
+            ]
+        )
+    return body
+
 
 @router.post('/')
-async def text_to_speech(body: List[Segment], own_credentials: bool=True, with_timeline: bool=False, db: Session = Depends(get_db), request: Request=None):
+async def text_to_speech(body: Union[Node, SimpleTTSRequest], own_credentials: bool = True, with_timeline: bool = False, db: Session = Depends(get_db), request: Request = None):
     user_id = request.state.user.get('id')
-    user= db.query(Users).filter(Users.id == user_id).first()
+    user = db.query(Users).filter(Users.id == user_id).first()
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if user.subscription.plan == 'subscriber' and own_credentials==False:
-        azure_api_key =os.getenv("AZURE_API_KEY")
-        service_region = "brazilsouth"
-    elif user.subscription.plan == 'subscriber' and own_credentials==True:
-        credentials = db.query(UserSubscription).filter(UserSubscription.user_id == user_id).first().credential
-        azure_api_key = credentials.azure_key
-        service_region = credentials.region
-        azure_api_key = decrypt_str(azure_api_key)
-    elif user.subscription.plan == 'freemium' and own_credentials==True:
-        credentials = db.query(UserSubscription).filter(UserSubscription.user_id == user_id).first().credential
-        azure_api_key = credentials.azure_key
-        service_region = credentials.region
-        azure_api_key = decrypt_str(azure_api_key)
-    else:
-        raise HTTPException(status_code=403, detail="Process error. Please contact support.")
+    # Subscriber without own credentials → platform Azure key.
+    if user.subscription.plan == 'subscriber' and not own_credentials:
+        config_dict = {'apiKey': AZURE_API_KEY, 'region': "brazilsouth"}
+        return await azure_synthesis(config_dict, body, with_timeline)
 
-    segments = [s.dict() for s in body]
+    # Subscriber or freemium using their own credential → dispatch by provider_type.
+    if user.subscription.plan in ('subscriber', 'freemium') and own_credentials:
+        credentials = (
+            db.query(Credential)
+            .join(UserSubscription, UserSubscription.current_credential == Credential.id)
+            .filter(UserSubscription.user_id == user_id)
+            .first()
+        )
+        if not credentials:
+            raise HTTPException(status_code=404, detail="No active credential found")
 
-    if with_timeline:
-        async with _azure_semaphore:
-            temp_path, timeline, error, error_status = await run_in_threadpool(
-                build_audio_timeline, segments, azure_api_key, service_region
-            )
-        if not temp_path:
-            raise HTTPException(status_code=error_status or 500, detail=error or "Audio synthesis failed")
-        file_stream = open(temp_path, mode='rb')
-        def iterfile():
-            try:
-                yield from file_stream
-            finally:
-                file_stream.close()
-                remove_file(temp_path)
-    else:
-        ssml = build_ssml(segments)
-        audio_bytes = await build_audio_apirest(ssml=ssml, azure_api_key=azure_api_key, service_region=service_region)
-        file_stream = io.BytesIO(audio_bytes)
-        def iterfile():
-            yield from file_stream
+        config_dict = json.loads(decrypt_str(credentials.config))
+        provider = credentials.provider_type
 
-    headers = {"Content-Disposition": 'attachment; filename="tts.mp3"'}
+        if provider == 'azure':
+            return await azure_synthesis(config_dict, body, with_timeline)
+        elif provider == 'aws':
+            return await aws_synthesis(config_dict, body, with_timeline)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
+
+    raise HTTPException(status_code=403, detail="Process error. Please contact support.")
+
+
+async def azure_synthesis(config_dict, body, with_timeline):
+    api_key = config_dict.get('apiKey')
+    service_region = config_dict.get('region')
+
+    node_tree = body_type_request(body, 'azure')
+    segments = parser_nodes(node_tree, 'azure')
 
     if with_timeline:
-        json_timeline = json.dumps(timeline, ensure_ascii=True)
-        headers["X-Timeline"] = json_timeline
-        headers["Access-Control-Expose-Headers"] = "X-Timeline"
+        return await azure_time_builder(segments, api_key, service_region)
+    return await azure_ssml_build(segments, api_key, service_region)
 
-    return StreamingResponse(iterfile(), media_type='audio/mpeg', headers=headers)
+
+async def aws_synthesis(config_dict, body, with_timeline):
+    access_api_key = config_dict.get('accessKeyId')
+    secret_access_key = config_dict.get('secretAccessKey')
+    region = config_dict.get('region')
+
+    node_tree = body_type_request(body, 'aws')
+    segments = parser_nodes(node_tree, 'aws')
+    voice_id = segments[0]['voice'] if segments else None
+
+    if with_timeline:
+        return await aws_timeline_builder(segments, voice_id, access_api_key, secret_access_key, region)
+    return await aws_ssml_build(voice_id, segments, access_api_key, secret_access_key, region)

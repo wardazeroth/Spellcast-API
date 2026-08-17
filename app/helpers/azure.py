@@ -1,10 +1,43 @@
 import azure.cognitiveservices.speech as speechsdk
 from fastapi import HTTPException
-from app.config import DEFAULT_VOICE
 import tempfile
 import os, httpx, html
 
 AZURE_VOICE_LIMIT = 50
+
+AZURE_INFLECTION_PRESETS = {
+    # Positive Emotions
+    "cheerful": '<mstts:express-as style="cheerful" styledegree="1.8"><prosody pitch="+12%" rate="+8%">{text}</prosody></mstts:express-as>',
+    "excited": '<mstts:express-as style="excited" styledegree="1.8"><prosody pitch="+18%" rate="+18%">{text}</prosody></mstts:express-as>',
+    "friendly": '<mstts:express-as style="friendly" styledegree="1.8"><prosody pitch="+6%" rate="+3%">{text}</prosody></mstts:express-as>',
+    "hopeful": '<mstts:express-as style="hopeful" styledegree="1.8"><prosody pitch="+8%" rate="+5%">{text}</prosody></mstts:express-as>',
+
+    # Down Emotions
+    "calm": '<mstts:express-as style="calm" styledegree="1.8"><prosody pitch="-4%" rate="-10%">{text}</prosody></mstts:express-as>',
+    "sad": '<mstts:express-as style="sad" styledegree="1.8"><prosody pitch="-12%" rate="-18%">{text}</prosody></mstts:express-as>',
+
+    # whisper / fear
+    "whispering": '<mstts:express-as style="whispering" styledegree="2"><prosody volume="x-soft" pitch="-5%" rate="-10%">{text}</prosody></mstts:express-as>',
+    "fearful": '<mstts:express-as style="fearful" styledegree="1.8"><prosody pitch="+10%" rate="+12%">{text}</prosody></mstts:express-as>',
+    "terrified": '<mstts:express-as style="terrified" styledegree="2"><prosody pitch="+22%" rate="+20%">{text}</prosody></mstts:express-as>',
+
+    # Hostile
+    "angry": '<mstts:express-as style="angry" styledegree="1.8"><prosody volume="loud" pitch="-6%" rate="+10%">{text}</prosody></mstts:express-as>',
+    "unfriendly": '<mstts:express-as style="unfriendly" styledegree="1.8"><prosody pitch="-8%" rate="-5%">{text}</prosody></mstts:express-as>',
+    "shouting": '<mstts:express-as style="shouting" styledegree="2"><prosody volume="x-loud" pitch="+10%" rate="+12%">{text}</prosody></mstts:express-as>',
+
+    # prosody
+    "fast": '<prosody rate="+35%">{text}</prosody>',
+    "slow": '<prosody rate="-30%">{text}</prosody>',
+    "emphasis": '<emphasis level="strong">{text}</emphasis>'
+}
+
+
+def apply_azure_inflection(text: str, inflection: str) -> str:
+    template = AZURE_INFLECTION_PRESETS.get(inflection)
+    if not template:
+        return text
+    return template.format(text=text)
 
 
 def remove_file(path):
@@ -143,15 +176,16 @@ def build_ssml(segments: list):
     ssml = ("<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' "
             "xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='es-ES'>")
     for segment in segments:
+        # voice_name is always resolved by parser_nodes() before segments reach here — never
+        # None/'default' literal, since the provider-aware default lookup happens upstream.
         voice_name = segment["voice"]
-        if voice_name in ["default", None]:
-            voice_name = DEFAULT_VOICE
         text = segment["text"]
         style = segment["inflection"]
 
         safe_text = html.escape(text)
-        if style != "default":
-            block = f'<voice name="{voice_name}"><mstts:express-as style="{style}">{safe_text}</mstts:express-as></voice>'
+        if style and style != "default":
+            styled = apply_azure_inflection(safe_text, style)
+            block = f'<voice name="{voice_name}">{styled}</voice>'
         else:
             block = f'<voice name="{voice_name}">{safe_text}</voice>'
 

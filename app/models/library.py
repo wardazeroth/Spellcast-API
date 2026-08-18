@@ -5,13 +5,13 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 
-class Document(Base):
-    __tablename__ = "document"
+class Spell(Base):
+    __tablename__ = "spell"
     __table_args__ = {"schema": "spellcast"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     name = Column(String, nullable=False)
-    type = Column(String, nullable=False)   # TODO Buscar solución para pdf's 
+    type = Column(String, nullable=False)   # TODO Buscar solución para pdf's
     file_path = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -26,26 +26,30 @@ class Library(Base):
 
     user = relationship("Users", uselist=False)
 
-class DocumentLibrary(Base):
-    __tablename__ = "documentlibrary"
+class SpellLibrary(Base):
+    __tablename__ = "spelllibrary"
     __table_args__ = {"schema": "spellcast"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    document_id = Column(UUID(as_uuid=True), ForeignKey("spellcast.document.id"), nullable=True)
+    spell_id = Column(UUID(as_uuid=True), ForeignKey("spellcast.spell.id"), nullable=True)
     library_id = Column(UUID(as_uuid=True), ForeignKey("spellcast.library.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
- 
-    document = relationship("Document")
-    library = relationship("Library")    
 
-Document.documentlibrary = relationship(
-    DocumentLibrary,
-    back_populates="document",
+    spell = relationship("Spell")
+    library = relationship("Library")
+
+# Note: back_populates below don't actually correspond to any back_populates on the
+# `spell`/`library` relationships declared inside SpellLibrary above (those have none) —
+# this mismatch predates the Document->Spell rename (TCORE-78) and is not something this
+# rename introduced or attempted to fix.
+Spell.spelllibrary = relationship(
+    SpellLibrary,
+    back_populates="spell",
     uselist=False
 )
 
-Library.documentlibrary = relationship(
-    DocumentLibrary,
+Library.spelllibrary = relationship(
+    SpellLibrary,
     back_populates="library",
     uselist=False
 )

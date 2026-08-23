@@ -12,7 +12,7 @@ async def validate_key(region: str, azure_key: str) -> bool:
             raise HTTPException(status_code=500, detail='error fetching key')
         return resp
 
-async def get_voices_list(region, azure_key):
+async def get_azure_voices_list(region, azure_key):
     url = f"https://{region}.tts.speech.microsoft.com/cognitiveservices/voices/list"
     headers = {"Ocp-Apim-Subscription-Key": azure_key}
     
@@ -28,6 +28,8 @@ async def get_voices_list(region, azure_key):
             voice_format['value'] = voice.get('ShortName')
             voice_format['name'] = voice.get('DisplayName') + ' - ' + voice.get('LocaleName') + ', ' + voice.get('Gender')
             voice_format['gender'] = voice.get('Gender')
+            voice_format['language'] = voice.get('Locale')
+            voice_format['language_name'] = voice.get('LocaleName')
             voices_list.append(voice_format)
 
         return voices_list

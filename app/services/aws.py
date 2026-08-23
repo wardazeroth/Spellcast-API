@@ -1,10 +1,13 @@
-import httpx
 from fastapi import HTTPException
 from botocore.exceptions import ClientError
 import boto3
 
 
-async def validate_aws_key(aws_access_key: str, aws_secret_access_key: str, region: str, sessionToken: str):
+async def validate_aws_key(aws_access_key: str, aws_secret_access_key: str, region: str, sessionToken: str | None = None):
+    await get_aws_voices_list(aws_access_key, aws_secret_access_key, region, sessionToken)
+    return True
+
+async def get_aws_voices_list(aws_access_key: str, aws_secret_access_key: str, region: str, sessionToken: str | None = None):
     try:
         client = boto3.client(
             'polly',
@@ -14,8 +17,17 @@ async def validate_aws_key(aws_access_key: str, aws_secret_access_key: str, regi
             region_name= region
         )
 
-        client.describe_voices()
-        return True
+        voices = client.describe_voices()
+        voices_list = []
+        for voice in voices['Voices']:
+            voice_format= {}
+            voice_format['value'] = voice.get('Id')
+            voice_format['name'] = voice.get('Name')
+            voice_format['gender'] = voice.get('Gender')
+            voice_format['language'] = voice.get('LanguageCode')
+            voice_format['language_name'] = voice.get('LanguageName')
+            voices_list.append(voice_format)
+        return voices_list
     except ClientError as e:
         error_code = e.response['Error']['Code']
         if error_code in ['UnrecognizedClientException', 'InvalidSignatureException']:

@@ -90,7 +90,7 @@ def build_aws_timeline(ssml, voiceId, accessKeyId, secretAccessKey, region):
 
     marks_timeline = response['AudioStream'].read().decode('utf-8')
     manager = AWSTimelinemanager()
-    timeline = manager.process_marks(marks_timeline, ssml_text=ssml)
+    timeline = manager.process_marks(marks_timeline)
     return timeline
 
 def build_aws_audio(voiceId, ssml, accessKeyId, secretAccessKey, region):

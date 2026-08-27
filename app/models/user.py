@@ -1,6 +1,6 @@
 from uuid import uuid4
 from app.integrations.alchemy import engine, Base
-from app.models.library import Library
+from app.models.grimoire import Grimoire
 from sqlalchemy import Column, String, ForeignKey, Text, DateTime, Table, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -47,8 +47,8 @@ Users.subscription = relationship(
     back_populates="user"
 ) 
 
-Users.library = relationship(
-    Library,
+Users.grimoire = relationship(
+    Grimoire,
     back_populates="user",
     uselist=False
 )

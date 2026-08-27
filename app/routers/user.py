@@ -4,7 +4,7 @@ from app.models.user import Credential, Users, UserSubscription
 from app.integrations.redis import get_cache, set_cache
 from app.integrations.fernet import encrypt_str, decrypt_str
 from app.integrations.alchemy import get_db
-from app.interfaces.credentials import CredentialsCreate, CredentialsUpdate, validate_provider_config
+from app.interfaces.credentials import CredentialsCreate, CredentialsUpdate, SetCurrentCredential, validate_provider_config
 from app.services.azure import validate_key, get_azure_voices_list
 from app.services.aws import validate_aws_key, get_aws_voices_list
 from app.utils.mask import mask
@@ -266,7 +266,6 @@ async def delete_credentials(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=500, detail="Internal server error while deleting credential")
 
-
 @router.get('/voices/{credential_id}')
 async def get_voices(request: Request, db: Session = Depends(get_db)):
     user_id = request.state.user.get('id')
@@ -300,7 +299,7 @@ async def get_voices(request: Request, db: Session = Depends(get_db)):
         cached = get_cache(cache_key)
         if cached:
             return json.loads(cached)
-        valid_voices = await get_aws_voices_list(access_key, secret_access_key, region, sessionToken = None)
+        valid_voices = await get_aws_voices_list(access_key, secret_access_key, region)
         set_cache(cache_key, json.dumps(valid_voices))
         return valid_voices
     elif credential.provider_type == 'gcp':
@@ -316,26 +315,30 @@ async def get_inflections(request: Request):
     return {"inflections": SUPPORTED_INFLECTIONS}
 
 @router.patch('/current_credential')
-async def update_current_credential(request: Request, db: Session = Depends(get_db)):
+async def update_current_credential(request: Request, body: SetCurrentCredential, db: Session = Depends(get_db)):
     user_id = request.state.user.get('id')
     user = db.query(Users).filter(Users.id == user_id).first()
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    body = await request.json()
-    current_credential = body.get('credential_id')
-
-    credential = db.query(Credential).filter(Credential.id ==
-        current_credential, Credential.user_id == user_id).first()
-    if not credential:
+    subscription = (db.query(UserSubscription).filter(UserSubscription.user_id == user_id).first())
+    if not subscription:
         raise HTTPException(
-            status_code=404, detail="Credential not found or does not belong to the user"
+            status_code=404, detail='User subscription record not found'
         )
+    
+    if body.credential_id:
+        current_credential = body.credential_id
 
-    subscription = db.query(UserSubscription).filter(
-        UserSubscription.user_id == user_id).first()
-    subscription.current_credential = current_credential
+        credential = db.query(Credential).filter(Credential.id ==
+            current_credential, Credential.user_id == user_id).first()
+        if not credential:
+            raise HTTPException(
+                status_code=404, detail="Credential not found or does not belong to the user"
+            )
+
+    subscription.current_credential = body.credential_id
 
     db.commit()
     db.refresh(subscription)

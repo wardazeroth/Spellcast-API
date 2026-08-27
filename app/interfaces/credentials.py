@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, Literal
 from fastapi import HTTPException
+from uuid import UUID
 
 class AzureConfigSchema(BaseModel):
     apiKey: str
@@ -40,6 +41,9 @@ class CredentialResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class SetCurrentCredential(BaseModel):
+    credential_id: UUID | None = None
 
 def validate_provider_config(provider_type: str, config: Dict[str, Any]) -> Dict[str, Any]:
     validators = {

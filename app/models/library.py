@@ -11,7 +11,11 @@ class Spell(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     name = Column(String, nullable=False)
-    type = Column(String, nullable=False)   # TODO Buscar solución para pdf's
+    # `type`/`file_path` are agnostic to what's actually uploaded (see routers/spell.py's
+    # presigned-URL flow) -- this table never persists a PDF binary itself, so there is
+    # nothing PDF-specific to solve here (TCORE-90: the original PDF, when a user keeps
+    # one, lives client-side only, in Spellcast-Client's own IndexedDB store).
+    type = Column(String, nullable=False)
     file_path = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

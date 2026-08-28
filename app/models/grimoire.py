@@ -11,13 +11,19 @@ class Spell(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     name = Column(String, nullable=False)
-    type = Column(String, nullable=False)   # TODO Buscar solución para pdf's
+    # `type`/`file_path` are agnostic to what's actually uploaded (see routers/spell.py's
+    # presigned-URL flow) -- this table never persists a PDF binary itself, so there is
+    # nothing PDF-specific to solve here (TCORE-90: the original PDF, when a user keeps
+    # one, lives client-side only, in Spellcast-Client's own IndexedDB store).
+    type = Column(String, nullable=False)
     file_path = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-class Library(Base):
-    __tablename__ = "library"
+# TCORE-104: renamed from Library -- a user's spell collection, "grimorio" in the product's
+# own language ("transcribe a spell to your grimoire").
+class Grimoire(Base):
+    __tablename__ = "grimoire"
     __table_args__ = {"schema": "spellcast"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -26,30 +32,30 @@ class Library(Base):
 
     user = relationship("Users", uselist=False)
 
-class SpellLibrary(Base):
-    __tablename__ = "spelllibrary"
+class SpellGrimoire(Base):
+    __tablename__ = "spellgrimoire"
     __table_args__ = {"schema": "spellcast"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     spell_id = Column(UUID(as_uuid=True), ForeignKey("spellcast.spell.id"), nullable=True)
-    library_id = Column(UUID(as_uuid=True), ForeignKey("spellcast.library.id"), nullable=True)
+    grimoire_id = Column(UUID(as_uuid=True), ForeignKey("spellcast.grimoire.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     spell = relationship("Spell")
-    library = relationship("Library")
+    grimoire = relationship("Grimoire")
 
 # Note: back_populates below don't actually correspond to any back_populates on the
-# `spell`/`library` relationships declared inside SpellLibrary above (those have none) —
+# `spell`/`grimoire` relationships declared inside SpellGrimoire above (those have none) —
 # this mismatch predates the Document->Spell rename (TCORE-78) and is not something this
 # rename introduced or attempted to fix.
-Spell.spelllibrary = relationship(
-    SpellLibrary,
+Spell.spellgrimoire = relationship(
+    SpellGrimoire,
     back_populates="spell",
     uselist=False
 )
 
-Library.spelllibrary = relationship(
-    SpellLibrary,
-    back_populates="library",
+Grimoire.spellgrimoire = relationship(
+    SpellGrimoire,
+    back_populates="grimoire",
     uselist=False
 )

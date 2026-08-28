@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.models.library import Spell
+from app.models.grimoire import Spell
 from app.integrations.alchemy import get_db
 from fastapi import APIRouter, Depends, Request, HTTPException
 from app.models.user import Users

@@ -8,6 +8,11 @@ primary_region = 'gru'
 
 [build]
 
+[deploy]
+  # Run pending DB migrations before the new release goes live, so code and schema
+  # never drift (a failed migration blocks the deploy instead of shipping mismatched code).
+  release_command = "alembic upgrade head"
+
 [http_service]
   internal_port = 8000
   force_https = true

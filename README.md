@@ -1,5 +1,7 @@
 # SPELLCAST API
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPLv3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+
 Spellcast es una API desarrollada con FastAPI y SQLAlchemy para la gestión de usuarios, bibliotecas y libros, permitiendo almacenar archivos PDF y extraer su contenido de texto.
 
 ## Características
@@ -96,7 +98,9 @@ Accede a la documentación interactiva de la API en:
 
 ## Licencia
 
-Este proyecto está bajo la licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más detalles.
+Copyright (C) 2026 TerminalCore Labs
+
+Este proyecto está licenciado bajo la [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only). Al ser el backend de una aplicación web hospedada (Spellcast-Client), aplica la cláusula de uso en red de AGPL: quien ejecute una versión modificada de esta API y permita que otros interactúen con ella por red debe también poner ese código modificado a disposición de esos usuarios. El endpoint raíz (`GET /`) expone la licencia y un enlace al código fuente para cumplir con esta cláusula.
 
 ## Autenticación mediante Token JWT 
 Se instala la librería python-jose, que contiene el módulo jwt (Jason Web Token), y JWTError

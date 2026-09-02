@@ -40,9 +40,18 @@ def get_db():
         db.close()
 
 # Root endpoint
+# TCORE-85: this is the API's only public, unauthenticated route (see public_routes in
+# middlewares/auth_middleware.py), so it's the natural place to satisfy AGPLv3's
+# network-use clause (section 13) -- license + a link to the source code, reachable by
+# anyone interacting with this instance over the network, no auth required.
 @app.get("/")
 def root():
-    return {"message": "Welcome to SpellCast API"}
+    return {
+        "message": "Welcome to SpellCast API",
+        "license": "AGPL-3.0-only",
+        "license_text": "https://www.gnu.org/licenses/agpl-3.0.html",
+        "source_code": "https://github.com/TerminalCore-Labs/Spellcast-API",
+    }
 
 #Starting Redis Client
 @app.on_event('startup')

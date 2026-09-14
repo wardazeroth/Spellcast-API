@@ -43,7 +43,9 @@ async def create_spell(request: Request, db: Session = Depends(get_db)):
         new_spell = Spell(
             name = name,
             type = type,
-            file_path = f"https://{AWS_S3_BUCKET}.s3.amazonaws.com/{key}"
+            file_path = f"https://{AWS_S3_BUCKET}.s3.amazonaws.com/{key}",
+            visibility = "private",
+            review_status = "none",
         )
 
         db.add(new_spell)

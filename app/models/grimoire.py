@@ -1,8 +1,8 @@
 from uuid import uuid4
 from app.integrations.alchemy import engine, Base
-from sqlalchemy import Column, String, ForeignKey, DateTime
+from sqlalchemy import Column, String, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from datetime import datetime
 
 class Spell(Base):
@@ -19,9 +19,15 @@ class Spell(Base):
     file_path = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    visibility = Column(String, nullable=False, server_default="private")
+    transcribed_from = Column(UUID(as_uuid=True), ForeignKey("spellcast.spell.id", ondelete="SET NULL"), nullable=True)
+    root_spell_id = Column(UUID(as_uuid=True), nullable=True)
+    review_status = Column(String, nullable=False, server_default="none")
+    description = Column(Text, nullable=True)
+    author = Column(String, nullable=True)
+    tags = Column(JSONB, nullable=False, server_default="[]")
+    language = Column(String, nullable=True)
 
-# TCORE-104: renamed from Library -- a user's spell collection, "grimorio" in the product's
-# own language ("transcribe a spell to your grimoire").
 class Grimoire(Base):
     __tablename__ = "grimoire"
     __table_args__ = {"schema": "spellcast"}

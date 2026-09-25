@@ -65,3 +65,23 @@ Grimoire.spellgrimoire = relationship(
     back_populates="grimoire",
     uselist=False
 )
+
+class SpellReview(Base):
+    __tablename__ = "spellreview"
+    __table_args__ = {"schema": "spellcast"}
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    spell_id = Column(UUID(as_uuid=True), ForeignKey("spellcast.spell.id"), nullable=False)
+    submitted_by = Column(UUID(as_uuid=True), ForeignKey("accounts.users.id", ondelete="SET NULL"), nullable=True)
+    reviewed_by = Column(UUID(as_uuid=True), ForeignKey("accounts.users.id", ondelete="SET NULL"), nullable=True)
+    status = Column(String, nullable=False, server_default='pending')
+    reason = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
+
+    spell = relationship("Spell")
+Spell.spellreview = relationship(
+    SpellReview,
+    back_populates="spell",
+    uselist=False
+)

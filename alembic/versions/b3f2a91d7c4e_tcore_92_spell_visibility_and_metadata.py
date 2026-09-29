@@ -11,7 +11,10 @@ Add-only migration on spellcast.spell:
   default '[]'), language (String, nullable)
 
 Existing rows backfill to the column defaults via server_default (same pattern as
-0044117385a8_add_voices_column_to_azure_credentials.py), no manual UPDATE needed.
+0044117385a8_add_voices_column_to_azure_credentials.py) for every column except
+root_spell_id, which has no default and can't reference another column of the same
+row -- backfilled with an explicit UPDATE instead (safe here since transcribed_from
+is brand new, so every pre-existing row is necessarily a root spell).
 
 Revision ID: b3f2a91d7c4e
 Revises: aceaa6b173d8
@@ -50,6 +53,10 @@ def upgrade() -> None:
         source_schema='spellcast', referent_schema='spellcast',
         ondelete='SET NULL',
     )
+
+    # transcribed_from didn't exist before this migration, so every row that already
+    # exists at this point has no lineage recorded -- all of them are root spells.
+    op.execute('UPDATE spellcast.spell SET root_spell_id = id WHERE transcribed_from IS NULL')
 
 
 def downgrade() -> None:

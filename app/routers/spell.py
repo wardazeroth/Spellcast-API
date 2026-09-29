@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.models.grimoire import Spell, Grimoire, SpellGrimoire
+from app.models.grimoire import Grimoire, SpellGrimoire
+from app.models.spell import Spell
 from app.integrations.alchemy import get_db
 from fastapi import APIRouter, Depends, Request, HTTPException
 from app.models.user import Users
@@ -55,3 +56,28 @@ async def create_spell(request: Request, db: Session = Depends(get_db)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{spell_id}/transcription")
+async def transcription(spell_id: str, request: Request, db: Session = Depends(get_db)):
+    user_id = request.state.user.get('id')
+    user= db.query(Users).filter(Users.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    spell = db.query(Spell).filter(
+    Spell.id == spell_id).first()
+
+    if not spell:
+        raise HTTPException(status_code=404, detail="Spell doesn't exist")
+
+    grimoire = db.query(Grimoire).filter(Grimoire.user_id == user_id).first()
+    if grimoire: 
+        spell_grimoire = db.query(SpellGrimoire).filter(SpellGrimoire.grimoire_id == grimoire.id, SpellGrimoire.spell_id == spell.id).first()
+    else:
+        pass
+    if not spell.visibility == 'public' and spell.review_status == 'approved':
+        pass
+    elif not spell_grimoire:
+        pass
+    else:
+        raise HTTPException(status_code=403, detail="")

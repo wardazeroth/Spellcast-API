@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.models.grimoire import Grimoire, SpellGrimoire
-from app.models.spell import Spell
+from app.models.spell import Spell, SpellReview
 from app.integrations.alchemy import get_db
 from fastapi import APIRouter, Depends, Request, HTTPException
 from app.models.user import Users
@@ -71,8 +71,7 @@ async def transcription(spell_id: str, request: Request, db: Session = Depends(g
     name = body.get('name')
     type = body.get('type')
 
-    spell = db.query(Spell).filter(
-    Spell.id == spell_id).first()
+    spell = db.query(Spell).filter(Spell.id == spell_id).first()
     key = f"{type}/{uuid4()}-{name}"
     new_spell_id = uuid4()
     if not spell:
@@ -119,3 +118,40 @@ async def transcription(spell_id: str, request: Request, db: Session = Depends(g
             raise HTTPException(status_code=500, detail=str(e))
     else:
         raise HTTPException(status_code=403, detail="Cannot transcript this spell")
+
+@router.patch("/{spell_id}/visibility")
+async def set_visibility(spell_id: str, request: Request, db: Session = Depends(get_db)):
+    user_id = request.state.user.get('id')
+    user= db.query(Users).filter(Users.id == user_id).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    body = await request.json()
+    visibility = body.get('visibility')
+
+    if not (visibility=="private" or visibility=='public'):
+        raise HTTPException(status_code=400, detail="Shared not supported yet")
+    
+    spell = db.query(Spell).filter(Spell.id == spell_id).first()
+    if not spell:
+        raise HTTPException(status_code=404, detail="Spell doesn't exist")
+    grimoire = db.query(Grimoire).filter(Grimoire.user_id == user_id).first()
+    if grimoire:
+        spell_grimoire = db.query(SpellGrimoire).filter(SpellGrimoire.grimoire_id == grimoire.id, SpellGrimoire.spell_id == spell.id).first()
+    else:
+        spell_grimoire = None
+    if spell_grimoire:
+        if visibility=="private":
+            spell.visibility = visibility
+        elif visibility=="public":
+            spell.visibility= 'public'
+            spell.review_status='pending'
+            new_review = SpellReview(
+                spell_id = spell.id,
+                submitted_by=user.id,
+            )
+            db.add(new_review)
+        db.commit()
+    else:
+        raise HTTPException(status_code=403, detail="Not allowed to modify this spell")
+    return({'visibility': spell.visibility,'review_status': spell.review_status})

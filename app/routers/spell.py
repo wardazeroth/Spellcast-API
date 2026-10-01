@@ -39,12 +39,17 @@ async def create_spell(request: Request, db: Session = Depends(get_db)):
     type = body.get('type')
 
     key = f"{type}/{uuid4()}-{name}"
+    new_spell_id = uuid4()
     try:
         url = generate_presigned_url(key, content_type=type)
         new_spell = Spell(
+            id = new_spell_id,
             name = name,
             type = type,
-            file_path = f"https://{AWS_S3_BUCKET}.s3.amazonaws.com/{key}"
+            file_path = f"https://{AWS_S3_BUCKET}.s3.amazonaws.com/{key}",
+            visibility = "private",
+            review_status = "none",
+            root_spell_id = new_spell_id
         )
 
         db.add(new_spell)

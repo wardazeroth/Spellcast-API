@@ -6,6 +6,7 @@ from app.models.user import Users
 from app.models.grimoire import SpellGrimoire, Grimoire
 from app.models.spell import Spell
 from app.integrations.boto3 import generate_presigned_url, delete_file
+from app.config import AWS_S3_BUCKET
 import uuid
 
 router = APIRouter(prefix="/storage", tags=["Storage"])
@@ -23,7 +24,7 @@ async def get_presigned_upload_url(data: FileUploadRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/{key}")
+@router.delete("/{key:path}")
 async def delete_from_s3(request: Request, key: str, db: Session= Depends(get_db)):
     user_id = request.state.user.get('id')
     user = db.query(Users).filter(Users.id == user_id).first()
@@ -35,7 +36,8 @@ async def delete_from_s3(request: Request, key: str, db: Session= Depends(get_db
         raise HTTPException(status_code=404, detail="Current user doesn't have a Grimoire")
     spell_grimoire = db.query(SpellGrimoire).filter(SpellGrimoire.grimoire_id == grimoire.id).all() 
     spells = db.query(Spell).filter(Spell.id.in_([spell.spell_id for spell in spell_grimoire])).all()
-    if not any(key in spell.file_path for spell in spells):
+    expected_file_path = f"https://{AWS_S3_BUCKET}.s3.amazonaws.com/{key}"
+    if not any(spell.file_path == expected_file_path for spell in spells):
         raise HTTPException(status_code=404, detail="Spell doesn't belong to the current user")
     try:
         delete_file(key)
